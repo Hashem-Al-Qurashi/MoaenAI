@@ -93,7 +93,7 @@ class ConsultationService:
     def _get_remaining_questions(user: User) -> int:
         """Calculate remaining questions for user based on subscription."""
         if user.subscription_tier == "free":
-            return max(0, 3 - user.questions_used_this_month)
+            return 999999
         elif user.subscription_tier == "pro":
             return max(0, 100 - user.questions_used_this_month)
         else:  # enterprise

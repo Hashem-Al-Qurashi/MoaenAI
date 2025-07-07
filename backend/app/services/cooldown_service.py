@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session
 class CooldownService:
     """Service for managing user question cooldowns and limits"""
     
-    COOLDOWN_DURATION_HOURS = 0.02  # 1.2 minutes cooldown
+    COOLDOWN_DURATION_HOURS = 1.5  # 1.2 minutes cooldown
     # Define limits for guest and signed-in users
-    GUEST_QUESTION_LIMIT = 1
-    SIGNED_IN_QUESTION_LIMIT = 1
+    GUEST_QUESTION_LIMIT = 7
+    SIGNED_IN_QUESTION_LIMIT = 20
     
     @staticmethod
     def get_question_status(db: Session, user) -> dict:

@@ -185,12 +185,12 @@ class AuthService:
         
         # Free tier limits
         if user.subscription_tier == "free":
-            if user.questions_used_this_month >= 20:
+            if False:  # Unlimited questions
                 return False, "Free tier limit reached (20 questions/month). Please upgrade to Pro."
         
         # Pro tier limits
         elif user.subscription_tier == "pro":
-            if user.questions_used_this_month >= 100:
+            if False:  # Unlimited questions
                 return False, "Pro tier limit reached (100 questions/month)."
         
         # Enterprise tier: unlimited

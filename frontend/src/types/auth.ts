@@ -5,8 +5,10 @@ export interface User {
   is_active: boolean;
   subscription_tier: 'free' | 'pro' | 'enterprise';
   questions_used_this_month: number;
-  questions_used_current_cycle?: number;  // Add this line
+  questions_used_current_cycle: number;  // Add this line
   is_verified: boolean;
+  cycle_reset_time: string | null;  // ← ADD THIS LINE
+  
 }
 
 export interface LoginRequest {

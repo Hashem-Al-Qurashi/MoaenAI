@@ -1,55 +1,34 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';import { authAPI, chatAPI } from '../services/api';
-interface User {
-  id: string;
-  email: string;
-  full_name: string;
-  is_active: boolean;
-  subscription_tier: 'free' | 'pro' | 'enterprise';
-  questions_used_this_month: number;
-  questions_used_current_cycle?: number;    // ✅ ADD THIS
-  cycle_reset_time?: string;               // ✅ ADD THIS
-  is_verified: boolean;
-  questions_remaining?: number;            // ✅ ADD THIS
-}
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import { authAPI, chatAPI } from '../services/api';
+import type { User } from '../types/auth';
 
-interface GuestLimits {
-  messagesUsed: number;
-  maxMessages: number;
-  exchangesUsed: number;
-  maxExchanges: number;
-  exportsUsed: number;
-  maxExports: number;
-  citationsUsed: number;
-  maxCitations: number;
-  lastQuestionTime: number | null; // Timestamp of last question
-  cooldownMinutes: number; // Cooldown period in minutes
+
+
+
+interface CooldownInfo {
+  questionsUsed: number;
+  maxQuestions: number;
+  isInCooldown: boolean;
+  resetTime: Date | null;
+  timeUntilReset: number; // minutes
+  canAskQuestion: boolean;
+  resetTimeFormatted: string | null; // "4:15 PM"
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isGuest: boolean;
-  guestLimits: GuestLimits;
+  cooldownInfo: CooldownInfo;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
-  incrementGuestMessage: () => boolean;
-  incrementGuestExchange: () => boolean;
-  incrementGuestExport: () => boolean;
-  incrementGuestCitation: () => boolean;
-  canSendMessage: () => boolean;
-  canAskFollowup: () => boolean;
-  canExport: () => boolean;
-  canGetCitations: () => boolean;
-  resetGuestLimits: () => void;
-  // 🔧 NEW: Methods for updating user data
   updateUserData: (userData: Partial<User>) => void;
   refreshUserData: () => Promise<void>;
-  questionsRemaining: number;
-   isInCooldown: boolean;
-  cooldownTimeRemaining: number; // in minutes
-  canAskNewQuestion: () => boolean;
+  incrementQuestionUsage: () => void;
+  canSendMessage: () => boolean;
+  resetCooldownForTesting: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,112 +49,174 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(true);
-  const [guestLimits, setGuestLimits] = useState<GuestLimits>({
-    messagesUsed: 0,
-    maxMessages: 7,
-    exchangesUsed: 0,
-    maxExchanges: 3,
-    exportsUsed: 0,
-    maxExports: 2,
-    citationsUsed: 0,
-    maxCitations: 3,
-    lastQuestionTime: null,
-    cooldownMinutes: 90 // 1.5 hours cooldown
+  const [cooldownInfo, setCooldownInfo] = useState<CooldownInfo>({
+    questionsUsed: 0,
+    maxQuestions: 5, // Will be updated based on user type
+    isInCooldown: false,
+    resetTime: null,
+    timeUntilReset: 0,
+    canAskQuestion: true,
+    resetTimeFormatted: null
   });
+
+  // Real-time countdown timer
+  useEffect(() => {
+    if (cooldownInfo.isInCooldown && cooldownInfo.resetTime) {
+      const interval = setInterval(() => {
+        const now = new Date();
+        const timeLeft = cooldownInfo.resetTime!.getTime() - now.getTime();
+        
+        if (timeLeft <= 0) {
+          // Cooldown expired - reset
+          setCooldownInfo(prev => ({
+            ...prev,
+            questionsUsed: 0,
+            isInCooldown: false,
+            resetTime: null,
+            timeUntilReset: 0,
+            canAskQuestion: true,
+            resetTimeFormatted: null
+          }));
+        } else {
+          // Update countdown
+          const minutesLeft = Math.ceil(timeLeft / (60 * 1000));
+          const resetTimeFormatted = cooldownInfo.resetTime!.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            hour12: true 
+          });
+          
+          setCooldownInfo(prev => ({
+            ...prev,
+            timeUntilReset: minutesLeft,
+            resetTimeFormatted
+          }));
+        }
+      }, 1000); // Update every second for real-time
+
+      return () => clearInterval(interval);
+    }
+  }, [cooldownInfo.isInCooldown, cooldownInfo.resetTime]);
+
+  // Update max questions when user type changes
+  useEffect(() => {
+    const maxQuestions = isGuest ? 5 : 20;
+    setCooldownInfo(prev => ({
+      ...prev,
+      maxQuestions
+    }));
+  }, [isGuest, user?.subscription_tier]);
+
+  // Sync with user's backend cooldown state
+  useEffect(() => {
+    if (user && user.cycle_reset_time && user.questions_used_current_cycle !== undefined) {
+      const resetTime = new Date(user.cycle_reset_time);
+      const now = new Date();
+      const maxQuestions = 20;
+      const isInCooldown = user.questions_used_current_cycle >= maxQuestions && resetTime > now;
+      
+      setCooldownInfo(prev => ({
+        ...prev,
+        questionsUsed: user.questions_used_current_cycle,
+        maxQuestions,
+        isInCooldown,
+        resetTime: isInCooldown ? resetTime : null,
+        canAskQuestion: !isInCooldown,
+        resetTimeFormatted: isInCooldown ? resetTime.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit', 
+          hour12: true 
+        }) : null
+      }));
+    }
+  }, [user?.cycle_reset_time, user?.questions_used_current_cycle]);
+
+  const checkAuth = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        const currentUser = await authAPI.getCurrentUser();
+        setUser(currentUser);
+        setIsGuest(false);
+      } else {
+        setIsGuest(true);
+      }
+    } catch (error) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      setIsGuest(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     checkAuth();
-  }, []);
-
-  const checkAuth = useCallback(async () => {
-  try {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      const currentUser = await authAPI.getCurrentUser();
-      setUser(currentUser);
-      setIsGuest(false);
-    } else {
-      setIsGuest(true);
-    }
-  } catch (error) {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    setIsGuest(true);
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, [checkAuth]);
 
   const login = useCallback(async (email: string, password: string) => {
-  console.log('🔑 Starting login process...');
-  await authAPI.login({ email, password });
-  console.log('✅ API login successful, getting user data...');
-  
-  const currentUser = await authAPI.getCurrentUser();
-  console.log('👤 User data received:', currentUser.email);
-  
-  setUser(currentUser);
-  setIsGuest(false);
-  resetGuestLimits();
-  
-  console.log('🎯 Auth state updated, login complete');
-  await new Promise(resolve => setTimeout(resolve, 100));
-}, []);
+    console.log('🔑 Starting login process...');
+    await authAPI.login({ email, password });
+    console.log('✅ API login successful, getting user data...');
+    
+    const currentUser = await authAPI.getCurrentUser();
+    console.log('👤 User data received:', currentUser.email);
+    
+    setUser(currentUser);
+    setIsGuest(false);
+    
+    console.log('🎯 Auth state updated, login complete');
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }, []);
 
-const register = useCallback(async (email: string, password: string, fullName: string) => {
-  console.log('📝 Starting registration process...');
-  await authAPI.register({ email, password, full_name: fullName });
-  console.log('✅ Registration API successful, logging in...');
-  
-  await login(email, password);
-  console.log('🎯 Registration and login complete');
-  await new Promise(resolve => setTimeout(resolve, 100));
-}, [login]);
+  const register = useCallback(async (email: string, password: string, fullName: string) => {
+    console.log('📝 Starting registration process...');
+    await authAPI.register({ email, password, full_name: fullName });
+    console.log('✅ Registration API successful, logging in...');
+    
+    await login(email, password);
+    console.log('🎯 Registration and login complete');
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }, [login]);
 
   const logout = () => {
     authAPI.logout();
     setUser(null);
     setIsGuest(true);
-    resetGuestLimits();
+    // Reset cooldown for guests
+    setCooldownInfo({
+      questionsUsed: 0,
+      maxQuestions: 5,
+      isInCooldown: false,
+      resetTime: null,
+      timeUntilReset: 0,
+      canAskQuestion: true,
+      resetTimeFormatted: null
+    });
   };
 
-  // 🔧 NEW: Method to update user data in real-time
-  // 🔧 NEW: Method to update user data in real-time (with debounce)
-  const updateUserData = (userData: Partial<User>) => {
-  if (user) {
-    console.log('🔄 Updating user data:', userData);
-    setUser(prevUser => {
-      // Only update if data actually changed
-      const hasChanged = Object.keys(userData).some(
-        key => prevUser![key as keyof User] !== userData[key as keyof User]
-      );
-      
-      if (hasChanged) {
-        const updatedUser = { ...prevUser!, ...userData };
+  const updateUserData = useCallback((userData: Partial<User>) => {
+    if (user) {
+      console.log('🔄 Updating user data:', userData);
+      setUser(prevUser => {
+        const hasChanged = Object.keys(userData).some(
+          key => prevUser![key as keyof User] !== userData[key as keyof User]
+        );
         
-        // ✅ DEBUG with updated user data
-        setTimeout(() => {
-          console.log('🔍 Debug cooldown state:', {
-            user: updatedUser,
+        if (hasChanged) {
+          const updatedUser = { ...prevUser!, ...userData };
+          console.log('🔍 Updated user cooldown data:', {
             questions_used_current_cycle: updatedUser.questions_used_current_cycle,
-            questionsRemaining: updatedUser.subscription_tier === "free" 
-              ? Math.max(0, 1 - (updatedUser.questions_used_current_cycle || 0))
-              : Math.max(0, 100 - (updatedUser.questions_used_current_cycle || 0)),
-            isInCooldown: (updatedUser.subscription_tier === "free" 
-              ? Math.max(0, 1 - (updatedUser.questions_used_current_cycle || 0))
-              : Math.max(0, 100 - (updatedUser.questions_used_current_cycle || 0))) === 0
+            cycle_reset_time: updatedUser.cycle_reset_time
           });
-        }, 100);
-        
-        return updatedUser;
-      }
-      return prevUser!;
-    });
-  }
-};
+          return updatedUser;
+        }
+        return prevUser!;
+      });
+    }
+  }, [user]);
 
-  // 🔧 NEW: Method to refresh user data from backend
-  const refreshUserData = async () => {
+  const refreshUserData = useCallback(async () => {
     if (!isGuest) {
       try {
         console.log('🔄 Refreshing user data from backend...');
@@ -184,7 +225,8 @@ const register = useCallback(async (email: string, password: string, fullName: s
           console.log('✅ User data refreshed:', userStats);
           setUser(prevUser => ({
             ...prevUser!,
-            questions_used_this_month: userStats.questions_used_this_month,
+            questions_used_current_cycle: userStats.questions_used_current_cycle,
+            cycle_reset_time: userStats.cycle_reset_time,
             subscription_tier: userStats.subscription_tier,
             is_active: userStats.is_active,
             is_verified: userStats.is_verified
@@ -194,184 +236,85 @@ const register = useCallback(async (email: string, password: string, fullName: s
         console.warn('⚠️ Failed to refresh user data:', error);
       }
     }
-  };
+  }, [isGuest]);
 
-    // 🔧 ENHANCED: Calculate questions remaining in real-time
-    const questionsRemaining = user ? (() => {
-    if (user.subscription_tier === "free") {
-      return Math.max(0, 1 - (user.questions_used_current_cycle || 0));  // ✅ TEST LIMIT: 1
-    } else if (user.subscription_tier === "pro") {
-      return Math.max(0, 100 - (user.questions_used_current_cycle || 0));
-    } else { // enterprise
-      return 999999;
-    }
-  })() : 0;
-
-  const isInCooldown = (() => {
-  if (isGuest && guestLimits.lastQuestionTime) {
-    const now = Date.now();
-    const timeDiff = now - guestLimits.lastQuestionTime;
-    const cooldownTime = guestLimits.cooldownMinutes * 60 * 1000;
-    return timeDiff < cooldownTime;
-  }
-  
-  // ✅ FIXED: Return TRUE when in cooldown
-  if (user && questionsRemaining === 0) {
-    return true;  // ✅ CORRECT!
-  }
-  
-  return false;
-})();
-
-  // 🔧 NEW: Calculate remaining cooldown time in minutes
-  const cooldownTimeRemaining = (() => {
-  if (isGuest && guestLimits.lastQuestionTime && isInCooldown) {
-    const now = Date.now();
-    const timeDiff = now - guestLimits.lastQuestionTime;
-    const cooldownTime = guestLimits.cooldownMinutes * 60 * 1000;
-    const remaining = cooldownTime - timeDiff;
-    return Math.ceil(remaining / (60 * 1000));
-  }
-  
-  // ✅ ADD: For signed-in users
-  if (user && isInCooldown) {
-    return 90; // 1.5 hours in minutes
-  }
-  
-  return 0;
-})();
-
-  // 🔧 NEW: Check if user can ask a new question
-  const canAskNewQuestion = (): boolean => {
-    if (isInCooldown) return false;
-    return canSendMessage();
-  };
-
-  // Guest limitation functions
-  const incrementGuestMessage = (): boolean => {
-    if (isGuest && guestLimits.messagesUsed >= guestLimits.maxMessages) {
-      return false;
-    }
-    if (isGuest) {
-      setGuestLimits(prev => ({
-        ...prev,
-        messagesUsed: prev.messagesUsed + 1,
-        lastQuestionTime: Date.now() // 🔧 NEW: Record the time of last question
-      }));
-    }
-    return true;
-  };
-
-  const incrementGuestExchange = (): boolean => {
-    if (isGuest && guestLimits.exchangesUsed >= guestLimits.maxExchanges) {
-      return false;
-    }
-    if (isGuest) {
-      setGuestLimits(prev => ({
-        ...prev,
-        exchangesUsed: prev.exchangesUsed + 1
-      }));
-    }
-    return true;
-  };
-
-  const incrementGuestExport = (): boolean => {
-    if (isGuest && guestLimits.exportsUsed >= guestLimits.maxExports) {
-      return false;
-    }
-    if (isGuest) {
-      setGuestLimits(prev => ({
-        ...prev,
-        exportsUsed: prev.exportsUsed + 1
-      }));
-    }
-    return true;
-  };
-
-  const incrementGuestCitation = (): boolean => {
-    if (isGuest && guestLimits.citationsUsed >= guestLimits.maxCitations) {
-      return false;
-    }
-    if (isGuest) {
-      setGuestLimits(prev => ({
-        ...prev,
-        citationsUsed: prev.citationsUsed + 1
-      }));
-    }
-    return true;
-  };
-
-  
-
-  const canSendMessage = (): boolean => {
-    if (isGuest) {
-      return guestLimits.messagesUsed < guestLimits.maxMessages;
-    } else {
-      return questionsRemaining > 0;
-    }
-  };
-
-  const canAskFollowup = (): boolean => {
-    return !isGuest || guestLimits.exchangesUsed < guestLimits.maxExchanges;
-  };
-
-  const canExport = (): boolean => {
-    return !isGuest || guestLimits.exportsUsed < guestLimits.maxExports;
-  };
-
-  const canGetCitations = (): boolean => {
-    return !isGuest || guestLimits.citationsUsed < guestLimits.maxCitations;
-  };
-
-  const resetGuestLimits = () => {
-    setGuestLimits({
-      messagesUsed: 0,
-      maxMessages: 7,
-      exchangesUsed: 0,
-      maxExchanges: 3,
-      exportsUsed: 0,
-      maxExports: 2,
-      citationsUsed: 0,
-      maxCitations: 3,
-      lastQuestionTime: null,
-      cooldownMinutes: 90
+  const incrementQuestionUsage = useCallback(() => {
+    setCooldownInfo(prev => {
+      const newUsed = prev.questionsUsed + 1;
+      const maxQuestions = isGuest ? 5 : 20;
+      
+      if (newUsed >= maxQuestions) {
+        const resetTime = new Date(Date.now() + 90 * 60 * 1000); // 1.5 hours
+        const resetTimeFormatted = resetTime.toLocaleTimeString('en-US', { 
+          hour: 'numeric', 
+          minute: '2-digit', 
+          hour12: true 
+        });
+        
+        return {
+          questionsUsed: newUsed,
+          maxQuestions,
+          isInCooldown: true,
+          resetTime,
+          timeUntilReset: 90,
+          canAskQuestion: false,
+          resetTimeFormatted
+        };
+      }
+      
+      return { 
+        ...prev, 
+        questionsUsed: newUsed, 
+        maxQuestions,
+        canAskQuestion: true
+      };
     });
-  };
+  }, [isGuest]);
+
+  const canSendMessage = useCallback((): boolean => {
+    return cooldownInfo.canAskQuestion;
+  }, [cooldownInfo.canAskQuestion]);
+
+  const resetCooldownForTesting = useCallback(() => {
+    setCooldownInfo({
+      questionsUsed: 0,
+      maxQuestions: isGuest ? 5 : 20,
+      isInCooldown: false,
+      resetTime: null,
+      timeUntilReset: 0,
+      canAskQuestion: true,
+      resetTimeFormatted: null
+    });
+  }, [isGuest]);
 
   const value = useMemo(() => ({
-  user,
-  loading,
-  isGuest,
-  guestLimits,
-  login,
-  register,
-  logout,
-  isAuthenticated: !!user,
-  incrementGuestMessage,
-  incrementGuestExchange,
-  incrementGuestExport,
-  incrementGuestCitation,
-  canSendMessage,
-  canAskFollowup,
-  canExport,
-  canGetCitations,
-  resetGuestLimits,
-  updateUserData,
-  refreshUserData,
-  questionsRemaining,
-  isInCooldown,
-  cooldownTimeRemaining,
-  canAskNewQuestion
-}), [
-  user,
-  loading,
-  isGuest,
-  guestLimits,
-  questionsRemaining,
-  isInCooldown,
-  cooldownTimeRemaining
-]);
+    user,
+    loading,
+    isGuest,
+    cooldownInfo,
+    login,
+    register,
+    logout,
+    isAuthenticated: !!user,
+    updateUserData,
+    refreshUserData,
+    incrementQuestionUsage,
+    canSendMessage,
+    resetCooldownForTesting
+  }), [
+    user,
+    loading,
+    isGuest,
+    cooldownInfo,
+    login,
+    register,
+    updateUserData,
+    refreshUserData,
+    incrementQuestionUsage,
+    canSendMessage,
+    resetCooldownForTesting
+  ]);
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export type { User };

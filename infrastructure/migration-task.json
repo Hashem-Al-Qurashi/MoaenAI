@@ -1,0 +1,53 @@
+{
+  "family": "moaen-ai-migration",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::205979660707:role/moaen-ai-ecs-task-execution-role",
+  "taskRoleArn": "arn:aws:iam::205979660707:role/moaen-ai-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "migration-container",
+      "image": "205979660707.dkr.ecr.eu-central-1.amazonaws.com/moaen-ai/backend:latest",
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/moaen-ai/backend",
+          "awslogs-region": "eu-central-1",
+          "awslogs-stream-prefix": "migration"
+        }
+      },
+      "environment": [
+        {
+          "name": "ENVIRONMENT",
+          "value": "production"
+        },
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://postgres:PLACEHOLDER_PASSWORD@moaen-ai-database.cpuaygic6stn.eu-central-1.rds.amazonaws.com:5432/arabic_legal_db"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:eu-central-1:205979660707:secret:moaen-ai/database-KhVYhd:password::"
+        },
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:eu-central-1:205979660707:secret:moaen-ai/app-nh4wae:secret_key::"
+        },
+        {
+          "name": "DEEPSEEK_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:eu-central-1:205979660707:secret:moaen-ai/app-nh4wae:deepseek_api_key::"
+        }
+      ],
+      "command": [
+        "sh", 
+        "-c", 
+        "export DATABASE_URL=\"postgresql://postgres:$DB_PASSWORD@moaen-ai-database.cpuaygic6stn.eu-central-1.rds.amazonaws.com:5432/arabic_legal_db\" && alembic upgrade head"
+      ]
+    }
+  ]
+}

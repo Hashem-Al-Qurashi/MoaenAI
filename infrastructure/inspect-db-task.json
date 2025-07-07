@@ -1,0 +1,41 @@
+{
+  "family": "moaen-ai-inspect",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::205979660707:role/moaen-ai-ecs-task-execution-role",
+  "taskRoleArn": "arn:aws:iam::205979660707:role/moaen-ai-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "inspect-container",
+      "image": "205979660707.dkr.ecr.eu-central-1.amazonaws.com/moaen-ai/backend:latest",
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/moaen-ai/backend",
+          "awslogs-region": "eu-central-1",
+          "awslogs-stream-prefix": "inspect"
+        }
+      },
+      "environment": [
+        {
+          "name": "ENVIRONMENT",
+          "value": "production"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:eu-central-1:205979660707:secret:moaen-ai/database-KhVYhd:password::"
+        }
+      ],
+      "command": [
+        "python", 
+        "-c", 
+        "from sqlalchemy import create_engine, inspect; import os; engine = create_engine(f'postgresql://postgres:{os.getenv(\"DB_PASSWORD\")}@moaen-ai-database.cpuaygic6stn.eu-central-1.rds.amazonaws.com:5432/arabic_legal_db'); inspector = inspect(engine); print('TABLES:', inspector.get_table_names()); print('USERS COLUMNS:'); [print(f\"{col['name']}: {col['type']}\") for col in inspector.get_columns('users')]"
+      ]
+    }
+  ]
+}

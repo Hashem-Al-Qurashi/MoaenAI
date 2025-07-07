@@ -77,6 +77,8 @@ export const authAPI = {
     is_active: response.data.is_active,
     subscription_tier: response.data.subscription_tier,
     questions_used_this_month: response.data.questions_used_this_month,
+    questions_used_current_cycle: response.data.questions_used_current_cycle || 0,
+    cycle_reset_time: response.data.cycle_reset_time || null,
     is_verified: response.data.is_verified
   };
 },
@@ -125,11 +127,16 @@ api.interceptors.response.use(
 );
 
 export const legalAPI = {
-  async askQuestion(question: string): Promise<Consultation> {
+  async askQuestion(question: string, conversationHistory: any[] = []): Promise<Consultation> {
   const formData = new FormData();
-  formData.append('message', question);
+  formData.append('query', question);
+  
+  // Add conversation history for context (if any)
+  if (conversationHistory.length > 0) {
+    formData.append('context', JSON.stringify(conversationHistory));
+  }
 
-  const response = await api.post('/api/chat/message', formData, {
+  const response = await api.post('/api/ask', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
   

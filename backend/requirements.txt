@@ -1,5 +1,5 @@
 # ===============================================
-# ARABIC LEGAL AI ASSISTANT - COMPLETE WORKING VERSION
+# ARABIC LEGAL AI ASSISTANT - CLEAN REQUIREMENTS
 # ===============================================
 
 # Core FastAPI
@@ -7,16 +7,17 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 
-# Database & ORM  
+# Database & ORM
 sqlalchemy==2.0.23
 alembic==1.12.1
+psycopg2-binary==2.9.7
 
-# 🔧 FIXED: Authentication with compatible versions
+# Authentication
 python-jose[cryptography]==3.3.0
 passlib==1.7.4
 bcrypt==4.0.1
 
-# 🔧 FIXED: Email validation (was missing)
+# Email validation
 email-validator==2.1.0
 
 # Configuration & Validation
@@ -26,13 +27,16 @@ pydantic-settings==2.1.0
 openai==1.3.8
 python-dotenv==1.0.0
 
-# Document generation
+# Document processing
 python-docx==1.1.0
 
 # Text processing
 markdown==3.5.1
 httpx==0.25.2
 
-# Development tools (optional)
+# Production server
+gunicorn==21.2.0
+
+# Development tools
 pytest==7.4.3
-pytest-asyncio==0.21.1psycopg2-binary==2.9.10
+pytest-asyncio==0.21.1

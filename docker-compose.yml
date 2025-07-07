@@ -1,73 +1,68 @@
+version: '3.8'
 
 services:
-  # Backend service
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: moaen_postgres_dev
+    environment:
+      POSTGRES_DB: arabic_legal_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev_password_change_in_prod
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d arabic_legal_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Your Backend API
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: moaen_backend_dev
+      dockerfile: Dockerfile.dev
+      target: development
+    environment:
+      # Switch to PostgreSQL for containerized development
+      DATABASE_URL: postgresql://postgres:dev_password_change_in_prod@postgres:5432/arabic_legal_db
+      
+      # Your existing environment variables
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      SECRET_KEY: ${SECRET_KEY}
+      APP_NAME: "Arabic Legal Assistant"
+      DEBUG: "true"
+      ENVIRONMENT: development
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
-      - backend_data:/app/data
-    environment:
-      - DEBUG=true
-      - ENVIRONMENT=development
-      - DATABASE_URL=sqlite:///./data/arabic_legal.db
-    env_file:
-      - ./backend/.env
-    networks:
-        - moaen_network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      # Hot reload - your code changes will be reflected immediately
+      - ./backend/app:/app/app:ro
+      - ./backend/alembic:/app/alembic:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
-  # Frontend service
+  # Your Frontend (React)
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-    container_name: moaen_frontend_dev
+      dockerfile: Dockerfile.dev
+      target: development
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
     ports:
-      - "80:80"
+      - "3000:3000"
+    volumes:
+      # Hot reload for frontend too
+      - ./frontend/src:/app/src:ro
     depends_on:
       - backend
-    networks:
-      - moaen_network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Database service (for production, use AWS RDS)
-  # Uncomment for local PostgreSQL development
-  # postgres:
-  #   image: postgres:15-alpine
-  #   container_name: hokm_postgres_dev
-  #   environment:
-  #     POSTGRES_DB: hokm_ai
-  #     POSTGRES_USER: hokm_user
-  #     POSTGRES_PASSWORD: hokm_password
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
-  #   networks:
-  #     - hokm_network
-  #   restart: unless-stopped
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 volumes:
-  backend_data:
+  postgres_data:
     driver: local
-  # postgres_data:
-  #   driver: local
-
-networks:
-  moaen_network:
-    driver: bridge

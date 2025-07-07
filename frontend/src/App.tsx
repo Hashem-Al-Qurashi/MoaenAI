@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import { legalAPI, chatAPI } from './services/api';
+
 // Simple navigation helper
 const navigateTo = (path: string) => {
   window.history.pushState({}, '', path);
@@ -2094,7 +2095,15 @@ const AuthScreen: React.FC = () => {
 };
 
 const ChatApp: React.FC = () => {
-  const { user, logout, isGuest, guestLimits, incrementGuestMessage, incrementGuestExchange, incrementGuestExport, incrementGuestCitation, canSendMessage, canAskFollowup, canExport, canGetCitations, updateUserData, refreshUserData, questionsRemaining, isInCooldown, cooldownTimeRemaining, canAskNewQuestion } = useAuth();
+  const { 
+  user, 
+  isGuest, 
+  cooldownInfo, 
+  incrementQuestionUsage, 
+  canSendMessage, 
+  updateUserData,
+  logout
+} = useAuth();
   const [isMobile, setIsMobile] = useState(false); // 🔧 ADD THIS LINE
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -2195,7 +2204,7 @@ updateUserData({
   id: response.current_user.id,
   email: response.current_user.email,
   full_name: response.current_user.full_name,
-  questions_used_this_month: response.current_user.questions_used_this_month,
+  questions_used_current_cycle: response.current_user.questions_used_current_cycle,
   questions_used_current_cycle: response.current_user.questions_used_current_cycle,
   cycle_reset_time: response.current_user.cycle_reset_time,
   subscription_tier: response.current_user.subscription_tier,
@@ -2326,121 +2335,121 @@ const handleDeleteCancel = () => {
   if (!inputMessage.trim()) return;
 
   // 🔧 NEW: Check cooldown first
-  if (!canAskNewQuestion()) {
-    if (isInCooldown) {
-      showToast(`يجب الانتظار ${cooldownTimeRemaining} دقيقة قبل طرح سؤال جديد`, 'error');
+  // 🔧 FIX: Different checks for guests vs users
+if (isGuest) {
+  // For guests: only check basic message limits, no cooldown
+  if (!canSendMessage()) {
+    setUpgradePromptType('messages');
+    setShowUpgradePrompt(true);
+    return;
+  }
+} else {
+  // For users: check cooldown
+  if (!canSendMessage()) {
+    if (cooldownInfo.isInCooldown) {
+      showToast(`يجب الانتظار ${cooldownInfo.timeUntilReset} دقيقة قبل طرح سؤال جديد`, 'error');
     } else {
       setUpgradePromptType('messages');
       setShowUpgradePrompt(true);
     }
     return;
   }
+}
 
-  // Check exchange limit for guests (after 3 back-and-forth exchanges)
-  if (isGuest && messages.length > 0 && !canAskFollowup()) {
-    setUpgradePromptType('exchanges');
-    setShowUpgradePrompt(true);
-    return;
+  // ✅ UNIFIED: Check if user can send message (cooldown check)
+if (!canSendMessage()) {
+  if (cooldownInfo.isInCooldown) {
+    showToast(`يجب الانتظار حتى الساعة ${cooldownInfo.resetTimeFormatted}`, 'error');
+  } else {
+    showToast('تم تجاوز الحد المسموح من الأسئلة', 'error');
   }
+  return;
+}
 
-  const userMessage: Message = {
-    id: Date.now().toString(),
-    role: 'user',
-    content: inputMessage,
-    timestamp: new Date().toISOString()
-  };
-  setMessages(prev => [...prev, userMessage]);
-  const currentMessage = inputMessage;
-  setInputMessage('');
-  setIsLoading(true);
+const userMessage: Message = {
+  id: Date.now().toString(),
+  role: 'user',
+  content: inputMessage,
+  timestamp: new Date().toISOString()
+};
+setMessages(prev => [...prev, userMessage]);
+const currentMessage = inputMessage;
+setInputMessage('');
+setIsLoading(true);
 
-  // Increment counters for guests
+// ✅ UNIFIED: Single question counter for all users
+incrementQuestionUsage();
+
+try {
   if (isGuest) {
-    incrementGuestMessage();
-    if (messages.length > 0) {
-      incrementGuestExchange();
-      setExchangeCount(prev => prev + 1);
-    }
-  }
-
-  try {
-    // ✅ UNIFIED: All users (guests and signed-in) use chat system
-    let sessionId = null;
-    if (isGuest) {
-      // Generate or get guest session ID
-      sessionId = localStorage.getItem('guest_session_id');
-      if (!sessionId) {
-        sessionId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        localStorage.setItem('guest_session_id', sessionId);
-      }
-    }
-
-    const chatResponse = await chatAPI.sendMessage(currentMessage, selectedConversation || undefined, sessionId || undefined);
+    // ✅ GUESTS: Use simple API with conversation context from messages array
+    const consultation = await legalAPI.askQuestion(currentMessage, messages);
     
-    // Process citation limitations for guests
-    let aiContent = chatResponse.answer || chatResponse.ai_message?.content || chatResponse.content;
-console.log('🔍 AI Content:', aiContent);
-    if (isGuest && !canGetCitations()) {
-      // Strip Saudi law citations after limit
-      aiContent = stripCitations(aiContent);
-    } else if (isGuest) {
-      // Check if response contains citations and increment counter
-      if (containsCitations(aiContent)) {
-        incrementGuestCitation();
-      }
-    }
-
+    let aiContent = consultation.answer;
+    console.log('🔍 AI Content:', aiContent);
+    
     const aiMessage: Message = {
-      id: chatResponse.id,
+      id: consultation.id,
       role: 'assistant',
       content: formatAIResponse(aiContent || 'Response processing error'),
-      timestamp: chatResponse.timestamp
+      timestamp: consultation.timestamp
     };
+    
     setMessages(prev => [...prev, aiMessage]);
-
-    // ✅ UNIFIED: Update user data for both guests and signed-in users
+    
+  } else {
+    // ✅ USERS: Use full chat system with database persistence
+    const chatResponse = await chatAPI.sendMessage(currentMessage, selectedConversation || undefined);
+    
+    let aiContent = chatResponse.answer || chatResponse.ai_message?.content || chatResponse.content;
+    console.log('🔍 AI Content:', aiContent);
+    
+    const aiMessage: Message = {
+      id: chatResponse.id || chatResponse.ai_message?.id,
+      role: 'assistant',
+      content: formatAIResponse(aiContent || 'Response processing error'),
+      timestamp: chatResponse.timestamp || chatResponse.ai_message?.timestamp
+    };
+    
+    setMessages(prev => [...prev, aiMessage]);
+    
+    // Update user data for authenticated users
     if (chatResponse.updated_user) {
       console.log('🔄 Updating user data from chat response:', chatResponse.updated_user);
-      // ✅ Update with COMPLETE user data including cooldown fields
-updateUserData({
-  id: chatResponse.updated_user.id,
-  email: chatResponse.updated_user.email,
-  full_name: chatResponse.updated_user.full_name,
-  questions_used_this_month: chatResponse.updated_user.questions_used_this_month,
-  questions_used_current_cycle: chatResponse.updated_user.questions_used_current_cycle,
-  subscription_tier: chatResponse.updated_user.subscription_tier,
-  is_active: chatResponse.updated_user.is_active,
-  is_verified: chatResponse.updated_user.is_verified
-});
-
-console.log('🔍 Updated user with cooldown data:', {
-  questions_used_current_cycle: chatResponse.updated_user.questions_used_current_cycle,
-  email: chatResponse.updated_user.email
-});
+      updateUserData({
+        id: chatResponse.updated_user.id,
+        email: chatResponse.updated_user.email,
+        full_name: chatResponse.updated_user.full_name,
+        questions_used_current_cycle: chatResponse.updated_user.questions_used_current_cycle,
+        cycle_reset_time: chatResponse.updated_user.cycle_reset_time,
+        subscription_tier: chatResponse.updated_user.subscription_tier,
+        is_active: chatResponse.updated_user.is_active,
+        is_verified: chatResponse.updated_user.is_verified
+      });
     }
-
+    
     // Set conversation ID if this is a new conversation
     if (chatResponse.conversation_id && !selectedConversation) {
       setSelectedConversation(chatResponse.conversation_id);
     }
-
-    // Refresh conversations list
-    await loadConversations();
-
-  } catch (error: any) {
-    console.error('Chat API failed:', error);
     
-    // Handle cooldown errors specifically
-    if (error.response?.status === 429) {
-      const errorData = error.response.data.detail;
-      showToast(`تم تجاوز الحد المسموح: ${errorData.message}`, 'error');
-    } else {
-      showToast('حدث خطأ في الإرسال. حاول مرة أخرى.', 'error');
-    }
-  } finally {
-    setIsLoading(false);
+    // Refresh conversations list for users
+    await loadConversations();
   }
-};
+  
+} catch (error: any) {
+  console.error('Chat API failed:', error);
+  
+  // Handle cooldown errors specifically
+  if (error.response?.status === 429) {
+    const errorData = error.response.data.detail;
+    showToast(`تم تجاوز الحد المسموح: ${errorData.message}`, 'error');
+  } else {
+    showToast('حدث خطأ في الإرسال. حاول مرة أخرى.', 'error');
+  }
+} finally {
+  setIsLoading(false);
+}};
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -3145,18 +3154,19 @@ console.log('🔍 Updated user with cooldown data:', {
         backdropFilter: 'blur(20px)'
       }}>
         <PremiumProgress
-          current={guestLimits.messagesUsed}
-          max={guestLimits.maxMessages}
+          current={cooldownInfo.questionsUsed}
+          max={cooldownInfo.maxQuestions
+}
           label="الرسائل المجانية"
           type="messages"
         />
         
         <PremiumProgress
-          current={guestLimits.exportsUsed}
-          max={guestLimits.maxExports}
-          label="التحميلات المجانية"
-          type="exports"
-        />
+  current={cooldownInfo.questionsUsed}
+  max={cooldownInfo.maxQuestions}
+  label="الأسئلة المستخدمة"
+  type="messages"
+/>
       </div>
       
       {/* Ultra Premium Upgrade Button */}
@@ -3338,7 +3348,7 @@ console.log('🔍 Updated user with cooldown data:', {
               fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
               letterSpacing: '-0.02em'
             }}>
-              {questionsRemaining} / 20
+              {(cooldownInfo.maxQuestions - cooldownInfo.questionsUsed)} / 20
             </div>
         <div style={{
           fontSize: '12px',
@@ -3407,14 +3417,16 @@ console.log('🔍 Updated user with cooldown data:', {
         }}>
           <div style={{
   background: isGuest 
-    ? guestLimits.messagesUsed >= guestLimits.maxMessages 
+    ? cooldownInfo.questionsUsed >= cooldownInfo.maxQuestions
+ 
       ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)' 
       : 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
     : selectedConversation 
       ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)' 
       : 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
   color: isGuest 
-    ? guestLimits.messagesUsed >= guestLimits.maxMessages 
+    ? cooldownInfo.questionsUsed >= cooldownInfo.maxQuestions
+ 
       ? '#dc2626' 
       : '#059669'
     : selectedConversation ? '#2563eb' : '#059669',
@@ -3428,7 +3440,8 @@ console.log('🔍 Updated user with cooldown data:', {
   gap: '8px',
   border: '1px solid',
   borderColor: isGuest 
-    ? guestLimits.messagesUsed >= guestLimits.maxMessages 
+    ? cooldownInfo.questionsUsed >= cooldownInfo.maxQuestions
+ 
       ? 'rgba(220, 38, 38, 0.2)' 
       : 'rgba(5, 150, 105, 0.2)'
     : selectedConversation ? 'rgba(37, 99, 235, 0.2)' : 'rgba(5, 150, 105, 0.2)'
@@ -3440,10 +3453,12 @@ console.log('🔍 Updated user with cooldown data:', {
     background: 'currentColor'
   }} />
   {isGuest ? (
-    guestLimits.messagesUsed >= guestLimits.maxMessages ? (
+    cooldownInfo.questionsUsed >= cooldownInfo.maxQuestions
+ ? (
       'تم استنفاد الرسائل المجانية'
     ) : (
-      `${guestLimits.messagesUsed}/${guestLimits.maxMessages} رسائل مجانية`
+      `${cooldownInfo.questionsUsed}/${cooldownInfo.maxQuestions
+} رسائل مجانية`
     )
   ) : (
     selectedConversation ? 'محادثة نشطة' : 'محادثة جديدة'
@@ -3826,50 +3841,51 @@ console.log('🔍 Updated user with cooldown data:', {
       </button>
     </div>
               
-              {/* Character count and tips */}
-              <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginTop: '16px',
-      fontSize: '16px',
-      color: 'rgba(0, 108, 53, 0.7)',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif',
-      fontWeight: '400'
-    }}>
-                <div style={{ opacity: 0.8 }}>
-        اضغط Enter للإرسال، Shift+Enter للسطر الجديد
-      </div>
-<div style={{ 
-        background: 'rgba(0, 108, 53, 0.1)',
-        padding: '4px 12px',
-        borderRadius: '12px',
-        fontSize: '14px',
-        fontWeight: '500'
-      }}>
-        الأسئلة المتبقية: {questionsRemaining}/20
-      </div>
-              </div>
-            </div>
+ {/* Character count and tips */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: '16px',
+          fontSize: '16px',
+          color: 'rgba(0, 108, 53, 0.7)',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif',
+          fontWeight: '400'
+        }}>
+          <div style={{ opacity: 0.8 }}>
+            اضغط Enter للإرسال، Shift+Enter للسطر الجديد
+          </div>
+          <div style={{
+            background: 'rgba(0, 108, 53, 0.1)',
+            padding: '4px 12px',
+            borderRadius: '12px',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}>
+            الأسئلة المتبقية: {(cooldownInfo.maxQuestions - cooldownInfo.questionsUsed)}/20
           </div>
         </div>
       </div>
-      <RenamePopup
-        isOpen={renamePopup.isOpen}
-        currentTitle={renamePopup.currentTitle}
-        onSave={handleRenameSubmit}
-        onCancel={handleRenameCancel}
-      />
-      <DeletePopup
+    </div>
+  </div>
+</div>
+
+<RenamePopup
+  isOpen={renamePopup.isOpen}
+  currentTitle={renamePopup.currentTitle}
+  onSave={handleRenameSubmit}
+  onCancel={handleRenameCancel}
+/>
+
+<DeletePopup
   isOpen={deletePopup.isOpen}
   conversationTitle={deletePopup.conversationTitle}
   onConfirm={handleDeleteConfirm}
   onCancel={handleDeleteCancel}
 />
-      {/* Additional CSS for animations */}
-     
-    </>
-  );
+
+{/* Additional CSS for animations */}
+</>);
 };
 
 const App: React.FC = () => {
@@ -3905,7 +3921,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   // Log current state for debugging
-// Removed infinite console log - use React DevTools insteadconst login = useCallback(async (email: string, password: string) => {
+// Removed infinite console log - use React DevTools instead
   // Rest of your AppContent code stays the same..
 
   if (loading) {
