@@ -1,9 +1,9 @@
+from app.core.security import get_password_hash, verify_password
 """
 CLEAN MINIMAL AUTH - Working Version
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
 from pydantic import BaseModel
 import uuid
 
@@ -23,7 +23,6 @@ class LoginRequest(BaseModel):
     password: str
 
 # Simple password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 @router.post("/register")
 async def register_user(
@@ -35,7 +34,7 @@ async def register_user(
     if existing:
         raise HTTPException(400, "Email already registered")
     
-    hashed_pw = hash_password(request.password)
+    hashed_pw = get_password_hash(request.password)
     new_user = User(
         id=str(uuid.uuid4()),
         email=request.email,
@@ -90,10 +89,4 @@ async def login_user(
     }
 
 # Password utilities (moved from auth_service.py)
-def hash_password(password: str) -> str:
-    """Hash a password using bcrypt"""
-    return pwd_context.hash(password)
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
