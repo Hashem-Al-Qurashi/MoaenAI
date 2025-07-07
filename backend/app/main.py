@@ -12,8 +12,7 @@ import os
 import re
 
 # Import routers
-from app.api.auth import router as auth_router
-from app.api.users import router as users_router
+from app.api.simple_auth import router as auth_router  # ← CORRECT!
 
 # Initialize database tables
 from app.database import engine, Base
@@ -59,7 +58,6 @@ print(f"🌐 CORS Origins configured: {cors_origins}")
 
 # ✅ Include authentication and user management routers
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(users_router, prefix="/api/users", tags=["User Management"])
 app.include_router(chat_router, prefix="/api", tags=["Chat System"])
 
 # ✅ GUEST ACCESS: Direct RAG endpoint for non-authenticated users

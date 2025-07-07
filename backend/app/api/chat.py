@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Query
 from sqlalchemy.orm import Session
 from app.database import get_database
-from app.dependencies.auth import get_current_active_user, get_optional_current_user
+from app.dependencies.simple_auth import get_current_active_user, get_optional_current_user
 from app.services.chat_service import ChatService
 from app.services.cooldown_service import CooldownService
 from app.services.guest_service import GuestService
