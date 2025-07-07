@@ -7,7 +7,7 @@ import type {
   Consultation 
 } from '../types/auth';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://moaen-ai-alb-505825922.eu-central-1.elb.amazonaws.com';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

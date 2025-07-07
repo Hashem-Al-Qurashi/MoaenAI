@@ -3,9 +3,9 @@ Ultimate Arabic Legal Assistant - Complete Feature Set
 Combines JWT authentication, guest access, chat system, and direct RAG
 """
 from app.api.chat import router as chat_router
-from fastapi import FastAPI, HTTPException, Query, Form
+from fastapi import FastAPI, HTTPException, Query, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from datetime import datetime
 import io
 import os
@@ -13,6 +13,7 @@ import re
 
 # Import routers
 from app.api.simple_auth import router as auth_router  # ← CORRECT!
+from app.api.simple_consultations import router as consultations_router
 
 # Initialize database tables
 from app.database import engine, Base
@@ -56,8 +57,23 @@ app.add_middleware(
 cors_origins = get_cors_origins()
 print(f"🌐 CORS Origins configured: {cors_origins}")
 
+# ✅ CRITICAL FIX: Add global OPTIONS handler for CORS preflight
+@app.options("/{full_path:path}")
+async def options_handler(request: Request):
+    """Handle CORS preflight requests for all routes"""
+    return JSONResponse(
+        content={"detail": "OK"},
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
+
 # ✅ Include authentication and user management routers
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(consultations_router, prefix="/api", tags=["Guest Consultations"])
 app.include_router(chat_router, prefix="/api", tags=["Chat System"])
 
 # ✅ GUEST ACCESS: Direct RAG endpoint for non-authenticated users

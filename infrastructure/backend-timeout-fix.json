@@ -1,0 +1,72 @@
+{
+  "family": "moaen-ai-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::205979660707:role/moaen-ai-ecs-task-execution-role",
+  "taskRoleArn": "arn:aws:iam::205979660707:role/moaen-ai-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "backend-container",
+      "image": "205979660707.dkr.ecr.eu-central-1.amazonaws.com/moaen-ai/backend:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/moaen-ai/backend",
+          "awslogs-region": "eu-central-1",
+          "awslogs-stream-prefix": "backend"
+        }
+      },
+      "environment": [
+        {
+          "name": "ENVIRONMENT",
+          "value": "production"
+        },
+        {
+          "name": "CORS_ORIGINS",
+          "value": "http://moaen-ai-frontend-42fdc075.s3-website.eu-central-1.amazonaws.com,http://localhost:3000"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:eu-central-1:205979660707:secret:moaen-ai/database-KhVYhd:password::"
+        },
+        {
+          "name": "SECRET_KEY",
+          "valueFrom": "arn:aws:secretsmanager:eu-central-1:205979660707:secret:moaen-ai/app-nh4wae:secret_key::"
+        },
+        {
+          "name": "DEEPSEEK_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:eu-central-1:205979660707:secret:moaen-ai/app-nh4wae:deepseek_api_key::"
+        }
+      ],
+      "command": [
+        "gunicorn", 
+        "app.main:app", 
+        "--worker-class", "uvicorn.workers.UvicornWorker", 
+        "--workers", "1",
+        "--timeout", "300",
+        "--bind", "0.0.0.0:8000"
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8000/ || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 10,
+        "retries": 3,
+        "startPeriod": 120
+      }
+    }
+  ]
+}
