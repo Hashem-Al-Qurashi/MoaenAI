@@ -32,3 +32,18 @@ Thumbs.db
 
 # Dependencies
 node_modules/
+backend/.env
+.env
+# Environment variables
+.env
+backend/.env
+*.env
+
+# API Keys and Secrets
+*.key
+*.pem
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
