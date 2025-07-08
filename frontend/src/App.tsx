@@ -2205,7 +2205,6 @@ updateUserData({
   email: response.current_user.email,
   full_name: response.current_user.full_name,
   questions_used_current_cycle: response.current_user.questions_used_current_cycle,
-  questions_used_current_cycle: response.current_user.questions_used_current_cycle,
   cycle_reset_time: response.current_user.cycle_reset_time,
   subscription_tier: response.current_user.subscription_tier,
   is_active: response.current_user.is_active,
@@ -2383,7 +2382,27 @@ incrementQuestionUsage();
 try {
   if (isGuest) {
     // ✅ GUESTS: Use simple API with conversation context from messages array
-    const consultation = await legalAPI.askQuestion(currentMessage, messages);
+    let streamingResponse = '';
+const consultation = await legalAPI.askQuestion(currentMessage, messages, (chunk) => {
+  streamingResponse += chunk;
+  // Update the UI with streaming content
+  setMessages(prev => {
+    const lastMessage = prev[prev.length - 1];
+    if (lastMessage?.role === 'assistant') {
+      return prev.slice(0, -1).concat({
+        ...lastMessage,
+        content: formatAIResponse(streamingResponse)
+      });
+    } else {
+      return prev.concat({
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: formatAIResponse(streamingResponse),
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+});
     
     let aiContent = consultation.answer;
     console.log('🔍 AI Content:', aiContent);
@@ -2395,7 +2414,6 @@ try {
       timestamp: consultation.timestamp
     };
     
-    setMessages(prev => [...prev, aiMessage]);
     
   } else {
     // ✅ USERS: Use full chat system with database persistence

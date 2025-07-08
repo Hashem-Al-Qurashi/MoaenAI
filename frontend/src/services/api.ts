@@ -7,8 +7,7 @@ import type {
   Consultation 
 } from '../types/auth';
 
-const API_BASE_URL = 'http://moaen-ai-alb-505825922.eu-central-1.elb.amazonaws.com';
-
+const API_BASE_URL = 'http://localhost:8000';
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -127,20 +126,64 @@ api.interceptors.response.use(
 );
 
 export const legalAPI = {
-  async askQuestion(question: string, conversationHistory: any[] = []): Promise<Consultation> {
+  async askQuestion(question: string, conversationHistory: any[] = [], onChunk?: (chunk: string) => void): Promise<Consultation> {
   const formData = new FormData();
   formData.append('query', question);
   
-  // Add conversation history for context (if any)
   if (conversationHistory.length > 0) {
     formData.append('context', JSON.stringify(conversationHistory));
   }
 
-  const response = await api.post('/api/ask', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+  const response = await fetch(`${API_BASE_URL}/api/ask`, {
+    method: 'POST',
+    body: formData
   });
-  
-  return response.data;
+
+  if (!response.body) {
+    throw new Error('No response body for streaming');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let fullResponse = '';
+  let metadata: any = {};
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value);
+    const lines = chunk.split('\n');
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6);
+        if (data === '[DONE]') break;
+
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === 'chunk' && onChunk) {
+            fullResponse += parsed.content;
+            onChunk(parsed.content);
+          } else if (parsed.type === 'complete') {
+            metadata = parsed;
+          }
+        } catch (e) {
+          // Skip invalid JSON
+        }
+      }
+    }
+  }
+
+  return metadata.answer ? metadata : {
+    id: metadata.id || Date.now().toString(),
+    question: question,
+    answer: fullResponse,
+    category: 'general',
+    processing_time_ms: metadata.processing_time_ms || 0,
+    timestamp: new Date().toISOString(),
+    user_questions_remaining: 999
+  };
 },
 
   // 🔧 NEW: Get updated user stats after asking question

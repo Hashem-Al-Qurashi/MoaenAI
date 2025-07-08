@@ -1,358 +1,547 @@
 """
-Elite Legal RAG Engine - Optimized & Reliable
-Combines the elite legal quality that users love with speed optimizations and error handling.
-Maintains the exact prompting structure that produces excellent responses.
+Elite Legal RAG Engine - Production Ready with OpenAI Streaming
+Clean architecture with domain-specific prompting and streaming support
 """
 
 import os
+import re
+import asyncio
+from enum import Enum
+from typing import List, Dict, Optional, AsyncIterator, Tuple
+from dataclasses import dataclass
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI  # ← Both sync and async clients
 import markdown
-from typing import List, Dict
 
-# Load env variables
-load_dotenv(".env")
+# Load environment variables
+try:
+    load_dotenv(".env")
+except:
+    pass
+
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-if not DEEPSEEK_API_KEY:
-    raise ValueError("❌ API key missing")
-
-# Init DeepSeek
-deepseek = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com/v1")
-
-def ask_question(query: str) -> str:
-    """
-    Elite legal analysis with advanced strategic enhancements.
-    Maintains the exact prompting that users love.
-    """
-    print(f"🤖 سؤال المستخدم: {query}")
-
-    # Detect if this is a formal legal document request
-    if any(phrase in query for phrase in ["الرد القانونى على دعوى", "رد على الدعوى", "دفوع قانونية"]):
-        # ELITE LEGAL DOCUMENT with advanced strategies (EXACT version users loved)
-        enhanced_query = f"""قم بإعداد رد قانوني متقدم ومتميز على النحو التالي:
-
-{query}
-
-مطلوب: رد قانوني متقدم يتضمن الاستراتيجيات التالية:
-
-🏛️ **الهيكل الاستراتيجي المتقدم:**
-1. **ترتيب الحجج هرمياً** (أقوى الدفوع أولاً)
-2. **لغة قانونية مركزة وقوية**
-3. **ربط مباشر بالتواريخ والأدلة**
-
-⚖️ **تعزيز الإثبات المتقدم:**
-- ذكر مستندات ملموسة (إيصالات، سجلات، مراسلات رسمية)
-- ربط الأدلة مباشرة بالتواريخ لتفنيد الادعاء عملياً
-- تحديد المستندات المطلوبة بدقة
-
-🎯 **الطلبات المضادة الاستراتيجية:**
-- قلب الدعوى جزئياً مع طلب تعويض عن الأضرار
-- المطالبة بالتعويض عن سوء النية إن ثبت
-- طلبات استراتيجية تضع المدعي في موقف دفاعي
-
-📚 **السوابق القضائية والتنفيذية:**
-- استدعاء نصوص من أحكام المحكمة العليا المماثلة
-- ذكر السوابق التنفيذية ذات الصلة
-- الاستشهاد بقرارات إدارية داعمة
-
-👥 **دعم الدفع بالشهادة:**
-- طلب سماع شهود محددين
-- تحديد البيانات الإضافية المطلوبة
-- استراتيجية الإثبات بالشهادة
-
-🔬 **التقنية والأدلة الرقمية:**
-- الدفع ببطلان الدليل الرقمي (واتساب) تقنياً
-- المطالبة بتحليل فني متخصص
-- إضعاف حُجية المحادثات الإلكترونية
-
-📋 **المتطلبات الفنية:**
-- تحليل شامل لجميع الجوانب القانونية والإجرائية
-- الاستشهاد المتعمق بالمواد النظامية
-- صيغة رسمية متقدمة قابلة للتقديم للمحكمة
-- استراتيجية دفاعية متكاملة ومتعددة المستويات
-- تحليل المخاطر والبدائل الاستراتيجية
-- خطة تنفيذية مرحلية للدفاع
-
-**أسلوب الكتابة:** لغة قانونية قوية ومركزة، تنظيم هرمي للحجج، تفصيل عملي للخطوات."""
-
-    else:
-        # ELITE LEGAL CONSULTATION with strategic depth (EXACT version users loved)
-        enhanced_query = f"""قدم استشارة قانونية متقدمة ومتميزة للسؤال التالي:
-
-{query}
-
-مطلوب: استشارة قانونية متقدمة تشمل:
-
-🎯 **التحليل الاستراتيجي المتقدم:**
-- تحليل شامل لجميع الجوانب القانونية والعملية
-- تقييم المخاطر والفرص المتاحة
-- استراتيجيات متعددة المستويات
-
-⚖️ **الأسس القانونية المتعمقة:**
-- ذكر المواد النظامية والإجراءات المطلوبة بالتفصيل
-- الاستشهاد بالسوابق القضائية ذات الصلة
-- تحليل التطبيقات العملية للقوانين
-
-📋 **الخطة التنفيذية العملية:**
-- خطوات عملية مرحلية قابلة للتطبيق
-- تحديد المستندات والأدلة المطلوبة
-- جدول زمني للإجراءات
-
-🔍 **تحليل المخاطر والبدائل:**
-- تقييم السيناريوهات المختلفة
-- البدائل الاستراتيجية المتاحة
-- تحليل التكلفة والعائد
-
-💡 **التوصيات المتقدمة:**
-- نصائح استراتيجية متخصصة
-- تحذيرات قانونية مهمة
-- إرشادات للخطوات التالية
-
-**أسلوب الكتابة:** شامل ومفصل، عملي وقابل للتطبيق، لغة واضحة ومتخصصة."""
-
-    try:
-        response = deepseek.chat.completions.create(
-            model="deepseek-chat",
-            messages=[{"role": "user", "content": enhanced_query}],
-            temperature=0.15,  # Very low for maximum legal precision (EXACT setting users loved)
-            max_tokens=6000,   # Balanced - longer than 4000 but not max to avoid timeouts
-            timeout=120        # 2 minute timeout for comprehensive responses
-        )
-
-        answer_raw = response.choices[0].message.content
-        print("✅ الرد المتقدم (نص خام):", answer_raw[:300] + "...")
-
-        # Clean and convert Markdown to HTML for the frontend
-        answer_html = markdown.markdown(answer_raw)
-        
-        # Remove empty elements that cause display issues
-        import re
-        answer_html = re.sub(r'<p>\s*</p>', '', answer_html)  # Remove empty paragraphs
-        answer_html = re.sub(r'<li>\s*</li>', '', answer_html)  # Remove empty list items
-        answer_html = re.sub(r'<h[1-6]>\s*</h[1-6]>', '', answer_html)  # Remove empty headers
-        answer_html = re.sub(r'العنصر الثاني.*?(?=<|$)', '', answer_html, flags=re.DOTALL)  # Remove "العنصر الثاني" artifacts
-        
-        return answer_html
-
-    except Exception as e:
-        print(f"❌ خطأ في الاستعلام: {e}")
-        # Fallback with simpler prompt if elite version fails
-        try:
-            fallback_query = f"قدم رداً قانونياً شاملاً على: {query}"
-            response = deepseek.chat.completions.create(
-                model="deepseek-chat",
-                messages=[{"role": "user", "content": fallback_query}],
-                temperature=0.3,
-                max_tokens=3000,
-                timeout=60
-            )
-            answer_raw = response.choices[0].message.content
-            # Clean and convert Markdown to HTML for the frontend
-            answer_html = markdown.markdown(answer_raw)
-            
-            # Remove empty elements and artifacts
-            import re
-            answer_html = re.sub(r'<p>\s*</p>', '', answer_html)
-            answer_html = re.sub(r'<li>\s*</li>', '', answer_html)
-            answer_html = re.sub(r'<h[1-6]>\s*</h[1-6]>', '', answer_html)
-            answer_html = re.sub(r'العنصر الثاني.*?(?=<|$)', '', answer_html, flags=re.DOTALL)
-            
-            return answer_html
-        except Exception as fallback_error:
-            print(f"❌ خطأ في الاستعلام البديل: {fallback_error}")
-            return f"<p>عذراً، حدث خطأ تقني أثناء معالجة السؤال. يرجى المحاولة مرة أخرى.</p>"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # ADD this line
+AI_PROVIDER = os.getenv("AI_PROVIDER", "openai")  # ADD this line
 
 
-def ask_question_with_context(query: str, conversation_history: List[Dict[str, str]]) -> str:
-    """
-    Elite conversational legal analysis with advanced strategic context.
-    Maintains the exact prompting that users love with optimizations.
-    """
-    print("🏆 USING ELITE LEGAL STRATEGY VERSION!")
-    print(f"🤖 سؤال المستخدم مع السياق: {query}")
-    print(f"📚 عدد الرسائل السابقة: {len(conversation_history)}")
+if AI_PROVIDER == "openai" and OPENAI_API_KEY:
+    openai_client = AsyncOpenAI(
+        api_key=OPENAI_API_KEY,
+        timeout=60.0,
+        max_retries=2
+    )
+    sync_client = OpenAI(api_key=OPENAI_API_KEY)
+elif DEEPSEEK_API_KEY:
+    openai_client = AsyncOpenAI(
+        api_key=DEEPSEEK_API_KEY,
+        base_url="https://api.deepseek.com/v1",
+        timeout=60.0,
+        max_retries=2
+    )
+    sync_client = OpenAI(
+        api_key=DEEPSEEK_API_KEY, 
+        base_url="https://api.deepseek.com/v1"
+    )
+else:
+    raise ValueError("❌ No API key available")
 
-    # Build messages starting with conversation history
-    messages = []
+# 4. NEW CLASSES (ADD these after client initialization)
+class Domain(Enum):
+    """Legal domains for specialized prompting"""
+    LEGAL = "legal"
+    FINANCE = "finance" 
+    TECH = "tech"
+    GENERAL = "general"
+
+class Complexity(Enum):
+    """Query complexity levels"""
+    SIMPLE = "simple"
+    COMPLEX = "complex"
+    DOCUMENT = "document"
+
+@dataclass
+class PromptConfig:
+    """Configuration for AI prompting"""
+    domain: Domain
+    complexity: Complexity
+    max_tokens: int
+    temperature: float
+
+class DomainDetector:
+    """Enhanced domain detection for comprehensive consultation service"""
     
-    # Limit conversation history to prevent context overload (keep last 8 messages)
-    recent_history = conversation_history[-8:] if len(conversation_history) > 8 else conversation_history
-    for msg in recent_history:
-        messages.append({
-            "role": msg["role"],
-            "content": msg["content"]
-        })
+    # ==================== EXPANDED KEYWORDS ====================
     
-    # Enhance the current question with elite legal strategies (EXACT version users loved)
-    if any(phrase in query for phrase in ["الرد القانونى على دعوى", "رد على الدعوى", "دفوع قانونية"]):
-        # ELITE LEGAL DOCUMENT with advanced strategies
-        enhanced_query = f"""بناءً على السياق السابق، قم بإعداد رد قانوني متقدم ومتميز:
+    LEGAL_KEYWORDS = [
+        # Core legal terms
+        "قانون", "قانوني", "قانونية", "محكمة", "دعوى", "قضية", "حكم", "نظام", 
+        "قاضي", "محامي", "عقد", "عقود", "اتفاقية", "دفوع", "استئناف", "تنفيذ", 
+        "إجراءات", "محاكمة", "ترافع", "مرافعة",
+        
+        # Business legal
+        "شركة", "شركات", "تأسيس", "تسجيل", "رخصة", "تراخيص", "سجل", "سجلات",
+        "تجاري", "تجارية", "استثمار", "شراكة", "اندماج", "استحواذ",
+        
+        # Employment law
+        "موظف", "موظفين", "عمل", "عمال", "وظيفة", "خدمة", "راتب", "أجر",
+        "إجازة", "استقالة", "فصل", "انهاء", "تعويض", "مكافأة", "تأمينات",
+        
+        # Civil law
+        "حقوق", "التزامات", "مسؤولية", "ضرر", "تعويض", "ضمان", "كفالة",
+        "ملكية", "إيجار", "بيع", "شراء", "هبة", "وصية", "ميراث",
+        
+        # Criminal law
+        "جريمة", "جرائم", "عقوبة", "عقوبات", "جنائي", "جنحة", "مخالفة",
+        "سجن", "غرامة", "قصاص", "دية", "تعزير"
+    ]
+    
+    FINANCE_KEYWORDS = [
+        # Banking & loans
+        "بنك", "بنوك", "مصرف", "مصارف", "قرض", "قروض", "تمويل", "ائتمان",
+        "فوائد", "ربا", "مرابحة", "إجارة", "مشاركة", "مضاربة", "سلم",
+        
+        # Investments
+        "استثمار", "استثمارات", "أسهم", "سهم", "سندات", "صكوك", "محفظة",
+        "عوائد", "أرباح", "خسائر", "مخاطر", "تداول", "بورصة", "سوق مالي",
+        
+        # Insurance & savings
+        "تأمين", "تأمينات", "ادخار", "توفير", "معاش", "تقاعد", "صندوق",
+        
+        # Accounting & tax
+        "محاسبة", "ميزانية", "حسابات", "ضريبة", "ضرائب", "زكاة", "جمارك",
+        "مالي", "مالية", "نقدي", "سيولة", "رأس مال", "تكلفة", "إيرادات"
+    ]
+    
+    TECH_KEYWORDS = [
+        # Software & development
+        "تقني", "تقنية", "تكنولوجيا", "برمجة", "برامج", "تطبيق", "تطبيقات",
+        "موقع", "مواقع", "نظام", "أنظمة", "قاعدة بيانات", "خادم", "سيرفر",
+        
+        # Security & infrastructure
+        "أمان", "حماية", "أمن سيبراني", "اختراق", "فيروس", "تشفير",
+        "شبكة", "شبكات", "انترنت", "واي فاي", "خوادم", "سحابي", "كلاود",
+        
+        # AI & modern tech
+        "ذكي", "ذكاء اصطناعي", "آلة", "تعلم", "بيانات", "تحليل", "خوارزمية",
+        "رقمي", "رقمنة", "تحول رقمي", "منصة", "منصات", "تقنيات حديثة"
+    ]
+    
+    # Enhanced document detection
+    DOCUMENT_PHRASES = [
+        # Legal documents
+        "الرد القانونى على دعوى", "رد على الدعوى", "دفوع قانونية", "مذكرة قانونية",
+        "لائحة دعوى", "صيغة عقد", "مسودة اتفاقية", "نموذج عقد", "صياغة عقد",
+        
+        # Financial documents  
+        "دراسة جدوى", "خطة عمل", "تقرير مالي", "تحليل مالي", "ميزانية عمومية",
+        
+        # Technical documents
+        "مواصفات فنية", "تصميم نظام", "هيكل تقني", "خطة تطوير"
+    ]
+    
+    @classmethod
+    def detect_domain(cls, query: str) -> Domain:
+        """Enhanced domain detection with fallback logic"""
+        query_lower = query.lower()
+        
+        # Calculate scores for each domain
+        legal_score = sum(1 for kw in cls.LEGAL_KEYWORDS if kw in query_lower)
+        finance_score = sum(1 for kw in cls.FINANCE_KEYWORDS if kw in query_lower)
+        tech_score = sum(1 for kw in cls.TECH_KEYWORDS if kw in query_lower)
+        
+        # Enhanced scoring with context
+        total_words = len(query_lower.split())
+        
+        # Boost scores based on keyword density
+        legal_density = legal_score / max(total_words, 1) * 100
+        finance_density = finance_score / max(total_words, 1) * 100
+        tech_density = tech_score / max(total_words, 1) * 100
+        
+        print(f"🔍 Domain Detection: Legal={legal_score}({legal_density:.1f}%), Finance={finance_score}({finance_density:.1f}%), Tech={tech_score}({tech_density:.1f}%)")
+        
+        # Decision logic with minimum threshold
+        if legal_score > 0 and (legal_score >= finance_score and legal_score >= tech_score):
+            return Domain.LEGAL
+        elif finance_score > 0 and finance_score >= tech_score:
+            return Domain.FINANCE
+        elif tech_score > 0:
+            return Domain.TECH
+        
+        # Fallback: If query mentions consultation/advice, default to legal
+        consultation_terms = ["استشارة", "نصيحة", "مشورة", "رأي", "توجيه", "إرشاد"]
+        if any(term in query_lower for term in consultation_terms):
+            print("🎯 Fallback: Consultation detected → Legal domain")
+            return Domain.LEGAL
+            
+        return Domain.GENERAL
+    
+    @classmethod  
+    def detect_complexity(cls, query: str) -> Complexity:
+        """Enhanced complexity detection"""
+        query_lower = query.lower()
+        
+        # Check for document generation requests
+        if any(phrase in query_lower for phrase in cls.DOCUMENT_PHRASES):
+            return Complexity.DOCUMENT
+        
+        # Complex indicators
+        complex_indicators = [
+            "تحليل", "استراتيجية", "تفصيل", "شامل", "متقدم", "عميق", "مفصل",
+            "دراسة", "بحث", "تقييم", "مقارنة", "خطة", "برنامج", "منهجية"
+        ]
+        
+        # Length and complexity scoring
+        word_count = len(query_lower.split())
+        complex_terms = sum(1 for term in complex_indicators if term in query_lower)
+        
+        if complex_terms >= 2 or word_count > 20:
+            return Complexity.COMPLEX
+        elif complex_terms >= 1 or word_count > 10:
+            return Complexity.COMPLEX
+        
+        return Complexity.SIMPLE    
+    
+
+class PromptBuilder:
+    """Advanced prompt building with domain expertise"""
+    
+    # System prompts for different domains
+    SYSTEM_PROMPTS = {
+        Domain.LEGAL: """أنت مستشار قانوني سعودي متخصص ومرخص مع خبرة 20 عاماً في القانون السعودي.
+
+تخصصاتك:
+- القانون التجاري والشركات
+- قانون العمل والعمال
+- الأحوال الشخصية
+- القانون الجنائي
+- القانون الإداري
+- القانون العقاري
+
+أسلوب عملك:
+- تحليل دقيق مبني على النصوص النظامية
+- استشهاد بالسوابق القضائية
+- لغة قانونية واضحة ومهنية
+- حلول عملية قابلة للتطبيق""",
+
+        Domain.FINANCE: """أنت مستشار مالي سعودي معتمد مع خبرة 15 عاماً في الأسواق المالية السعودية.
+
+تخصصاتك:
+- التخطيط المالي الشخصي
+- الاستثمار في السوق السعودي
+- التمويل والقروض
+- الضرائب والزكاة
+- إدارة المخاطر المالية
+
+أسلوب عملك:
+- تحليل مالي دقيق
+- توصيات مبنية على البيانات
+- مراعاة الأحكام الشرعية
+- حلول مالية عملية""",
+
+        Domain.TECH: """أنت مهندس تقني سعودي متخصص مع خبرة 12 عاماً في تطوير الأنظمة والحلول التقنية.
+
+تخصصاتك:
+- تطوير الأنظمة والتطبيقات
+- الأمن السيبراني
+- الحوسبة السحابية
+- الذكاء الاصطناعي
+- إدارة البيانات
+
+أسلوب عملك:
+- حلول تقنية عملية
+- مراعاة معايير الأمان
+- توصيات قابلة للتطبيق
+- شرح تقني واضح""",
+
+        Domain.GENERAL: """أنت مستشار عام متخصص في تقديم المشورة الشاملة مع خبرة واسعة في مختلف المجالات.
+
+نهجك:
+- تحليل شامل ومتوازن
+- حلول عملية ومبتكرة
+- لغة واضحة ومفهومة
+- مراعاة السياق السعودي"""
+    }
+    
+    @classmethod
+    def get_system_prompt(cls, domain: Domain) -> str:
+        """Get system prompt for domain"""
+        return cls.SYSTEM_PROMPTS.get(domain, cls.SYSTEM_PROMPTS[Domain.GENERAL])
+    
+    @classmethod
+    def build_user_prompt(cls, query: str, domain: Domain, complexity: Complexity) -> str:
+        """Build optimized user prompt based on domain and complexity"""
+        
+        if complexity == Complexity.DOCUMENT and domain == Domain.LEGAL:
+            return cls._build_legal_document_prompt(query)
+        elif complexity == Complexity.COMPLEX:
+            return cls._build_complex_analysis_prompt(query, domain)
+        else:
+            return cls._build_simple_prompt(query, domain)
+    
+    @classmethod
+    def _build_legal_document_prompt(cls, query: str) -> str:
+        """Build prompt for legal document generation"""
+        return f"""قم بإعداد رد قانوني متقدم ومتميز:
 
 {query}
 
-مطلوب: رد قانوني متقدم يراعي السياق السابق ويتضمن:
+متطلبات الرد القانوني:
 
-🏛️ **الاستراتيجية المتقدمة:**
-1. **ترتيب هرمي للحجج** (الأقوى أولاً)
-2. **لغة قانونية مركزة وقوية**
-3. **ربط استراتيجي مع المناقشات السابقة**
+🏛️ **الهيكل الاستراتيجي:**
+- ترتيب الحجج هرمياً (الأقوى أولاً)
+- لغة قانونية مركزة وقوية
+- ربط مباشر بالنصوص النظامية
 
-⚖️ **تعزيز الإثبات المتطور:**
-- مستندات ملموسة (إيصالات، سجلات، مراسلات)
-- ربط مباشر بالتواريخ والأدلة العملية
-- استراتيجية إثبات متعددة المستويات
+⚖️ **الأسس القانونية:**
+- الاستشهاد بالمواد النظامية ذات الصلة
+- ذكر السوابق القضائية المماثلة
+- تحديد الأدلة والمستندات المطلوبة
 
-🎯 **الطلبات المضادة الذكية:**
-- قلب الدعوى جزئياً مع طلبات تعويض
-- استراتيجيات تضع المدعي في موقف دفاعي
-- طلبات احترازية ووقائية
+🎯 **الاستراتيجية القانونية:**
+- تحليل نقاط القوة والضعف
+- الدفوع القانونية المتاحة
+- الطلبات والتوصيات العملية
 
-📚 **السوابق والمراجع المتخصصة:**
-- أحكام المحكمة العليا المماثلة
-- السوابق التنفيذية الداعمة
-- قرارات إدارية ذات صلة
+📋 **التنفيذ العملي:**
+- خطوات إجرائية محددة
+- جدول زمني للتنفيذ
+- المستندات المطلوبة
 
-👥 **استراتيجية الشهود والأدلة:**
-- تحديد الشهود المطلوبين بدقة
-- استراتيجية جمع الأدلة الإضافية
-- خطة الإثبات المرحلية
-
-🔬 **التحليل التقني للأدلة:**
-- تفنيد الأدلة الرقمية تقنياً
-- طلب التحليل الفني المتخصص
-- إستراتيجية إضعاف أدلة الخصم
-
-**المخرجات المطلوبة:**
-- تحليل شامل متعدد المستويات
-- استشهادات قانونية متعمقة
-- خطة تنفيذية مرحلية مفصلة
-- استراتيجية دفاعية متكاملة"""
-
-    else:
-        # ELITE CONSULTATION with contextual awareness
-        enhanced_query = f"""بناءً على سياق المحادثة السابقة، قدم استشارة قانونية متقدمة:
+يجب أن يكون الرد قابلاً للتقديم أمام المحكمة ومطابقاً للأصول القانونية."""
+    
+    @classmethod
+    def _build_complex_analysis_prompt(cls, query: str, domain: Domain) -> str:
+        """Build prompt for complex analysis"""
+        domain_context = {
+            Domain.LEGAL: "قانونية",
+            Domain.FINANCE: "مالية", 
+            Domain.TECH: "تقنية",
+            Domain.GENERAL: "شاملة"
+        }
+        
+        context = domain_context.get(domain, "شاملة")
+        
+        return f"""قدم استشارة {context} متقدمة ومفصلة:
 
 {query}
 
-مطلوب: استشارة متقدمة تراعي السياق وتشمل:
+متطلبات التحليل:
 
-🎯 **التحليل السياقي المتقدم:**
-- ربط السؤال بالمناقشات السابقة
-- تطوير الاستراتيجية بناءً على السياق
-- تحليل شامل ومتراكم
+🎯 **التحليل الاستراتيجي:**
+- تقييم شامل للوضع الحالي
+- تحديد الفرص والتحديات
+- تحليل المخاطر والبدائل
 
-⚖️ **الأسس القانونية المتعمقة:**
-- مواد نظامية مفصلة مع التطبيق العملي
-- سوابق قضائية داعمة
-- تحليل متقدم للقوانين ذات الصلة
+📊 **الأسس المرجعية:**
+- الاستناد للمراجع والأنظمة ذات الصلة
+- تحليل السوابق والتجارب المماثلة
+- مراعاة السياق السعودي
 
-📋 **الخطة التنفيذية المتطورة:**
-- خطوات مرحلية مفصلة
-- مستندات وأدلة محددة
-- جدول زمني استراتيجي
+💡 **التوصيات العملية:**
+- حلول قابلة للتطبيق
+- خطة تنفيذية مرحلية
+- مؤشرات النجاح والمتابعة
 
-🔍 **تحليل المخاطر المتقدم:**
-- سيناريوهات متعددة ومتفرعة
-- بدائل استراتيجية متنوعة
-- تقييم شامل للتكلفة والعائد
+🔍 **التفاصيل التنفيذية:**
+- الخطوات المطلوبة
+- الموارد والمتطلبات
+- الجدول الزمني المقترح"""
+    
+    @classmethod
+    def _build_simple_prompt(cls, query: str, domain: Domain) -> str:
+        """Build prompt for simple queries"""
+        return f"""أجب على السؤال التالي بوضوح ودقة:
 
-💡 **التوصيات الاستراتيجية:**
-- نصائح متخصصة ومتقدمة
-- تحذيرات قانونية دقيقة
-- إرشادات للمراحل التالية"""
+{query}
 
-    # Add the enhanced current question
-    messages.append({
-        "role": "user",
-        "content": enhanced_query
-    })
+متطلبات الإجابة:
+- إجابة مباشرة وواضحة
+- تفسير مبسط عند الحاجة  
+- توصيات عملية مختصرة
+- مراعاة السياق السعودي"""
 
-    try:
-        response = deepseek.chat.completions.create(
-            model="deepseek-chat",
-            messages=messages,
-            temperature=0.15,  # Very low for maximum precision (EXACT setting users loved)
-            max_tokens=6000,   # Balanced for comprehensive responses
-            timeout=120        # 2 minute timeout
+class ConfigManager:
+    """Manage AI configuration based on complexity"""
+    
+    CONFIGS = {
+        Complexity.SIMPLE: PromptConfig(
+            domain=Domain.GENERAL,
+            complexity=Complexity.SIMPLE,
+            max_tokens=2000,
+            temperature=0.3
+        ),
+        Complexity.COMPLEX: PromptConfig(
+            domain=Domain.GENERAL,
+            complexity=Complexity.COMPLEX,
+            max_tokens=4000,
+            temperature=0.2
+        ),
+        Complexity.DOCUMENT: PromptConfig(
+            domain=Domain.LEGAL,
+            complexity=Complexity.DOCUMENT,
+            max_tokens=6000,
+            temperature=0.1
         )
+    }
+    
+    @classmethod
+    def get_config(cls, domain: Domain, complexity: Complexity) -> PromptConfig:
+        """Get configuration for domain and complexity"""
+        config = cls.CONFIGS[complexity]
+        config.domain = domain
+        return config
 
-        answer_raw = response.choices[0].message.content
-        print("✅ الرد المتقدم مع السياق (نص خام):", answer_raw[:300] + "...")
-
-        # Clean and convert Markdown to HTML for the frontend
-        answer_html = markdown.markdown(answer_raw)
-        
-        # Remove empty elements and artifacts
-        import re
-        answer_html = re.sub(r'<p>\s*</p>', '', answer_html)
-        answer_html = re.sub(r'<li>\s*</li>', '', answer_html)
-        answer_html = re.sub(r'<h[1-6]>\s*</h[1-6]>', '', answer_html)
-        answer_html = re.sub(r'العنصر الثاني.*?(?=<|$)', '', answer_html, flags=re.DOTALL)
-        
-        return answer_html
-
-    except Exception as e:
-        print(f"❌ خطأ في الاستعلام مع السياق: {e}")
-        # Fallback with simpler prompt if elite version fails
+class RAGEngine:
+    """Elite RAG Engine with streaming support"""
+    
+    def __init__(self):
+        self.client = openai_client
+        self.domain_detector = DomainDetector()
+        self.prompt_builder = PromptBuilder()
+        self.config_manager = ConfigManager()
+    
+    async def ask_question_streaming(self, query: str) -> AsyncIterator[str]:
+        """Process question with streaming response"""
         try:
-            fallback_query = f"بناءً على السياق السابق، قدم استشارة شاملة: {query}"
-            messages[-1]["content"] = fallback_query
-            response = deepseek.chat.completions.create(
-                model="deepseek-chat",
+            # Detect domain and complexity
+            domain = self.domain_detector.detect_domain(query)
+            complexity = self.domain_detector.detect_complexity(query)
+            
+            print(f"🎯 Domain: {domain.value}, Complexity: {complexity.value}")
+            
+            # Get configuration
+            config = self.config_manager.get_config(domain, complexity)
+            
+            # Build prompts
+            system_prompt = self.prompt_builder.get_system_prompt(domain)
+            user_prompt = self.prompt_builder.build_user_prompt(query, domain, complexity)
+            
+            # Create messages
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+            
+            # Stream response from OpenAI
+            async for chunk in self._stream_openai_response(messages, config):
+                yield chunk
+                
+        except Exception as e:
+            print(f"❌ Error in streaming: {e}")
+            yield f"عذراً، حدث خطأ تقني: {str(e)}"
+    
+    async def ask_question_with_context_streaming(
+        self, 
+        query: str, 
+        conversation_history: List[Dict[str, str]]
+    ) -> AsyncIterator[str]:
+        """Process question with conversation context and streaming"""
+        try:
+            # Detect domain and complexity
+            domain = self.domain_detector.detect_domain(query)
+            complexity = self.domain_detector.detect_complexity(query)
+            
+            print(f"🎯 Context query - Domain: {domain.value}, Complexity: {complexity.value}")
+            
+            # Get configuration
+            config = self.config_manager.get_config(domain, complexity)
+            
+            # Build messages with context
+            messages = [
+                {"role": "system", "content": self.prompt_builder.get_system_prompt(domain)}
+            ]
+            
+            # Add conversation history (limit to last 8 messages)
+            recent_history = conversation_history[-8:] if len(conversation_history) > 8 else conversation_history
+            for msg in recent_history:
+                messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+            
+            # Add current query with context awareness
+            contextual_prompt = f"بناءً على سياق المحادثة السابقة، {self.prompt_builder.build_user_prompt(query, domain, complexity)}"
+            messages.append({
+                "role": "user", 
+                "content": contextual_prompt
+            })
+            
+            # Stream response
+            async for chunk in self._stream_openai_response(messages, config):
+                yield chunk
+                
+        except Exception as e:
+            print(f"❌ Error in context streaming: {e}")
+            yield f"عذراً، حدث خطأ تقني: {str(e)}"
+    
+    async def _stream_openai_response(
+        self, 
+        messages: List[Dict[str, str]], 
+        config: PromptConfig
+    ) -> AsyncIterator[str]:
+        """Stream response from OpenAI"""
+        try:
+            stream = await self.client.chat.completions.create(
+                model="gpt-4o",  # Best model for Arabic legal work
                 messages=messages,
-                temperature=0.3,
-                max_tokens=3000,
-                timeout=60
+                max_tokens=config.max_tokens,
+                temperature=config.temperature,
+                stream=True
             )
-            answer_raw = response.choices[0].message.content
-            # Clean and convert Markdown to HTML
-            answer_html = markdown.markdown(answer_raw)
             
-            # Remove empty elements and artifacts
-            import re
-            answer_html = re.sub(r'<p>\s*</p>', '', answer_html)
-            answer_html = re.sub(r'<li>\s*</li>', '', answer_html)
-            answer_html = re.sub(r'<h[1-6]>\s*</h[1-6]>', '', answer_html)
-            answer_html = re.sub(r'العنصر الثاني.*?(?=<|$)', '', answer_html, flags=re.DOTALL)
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+                    
+        except Exception as e:
+            print(f"❌ OpenAI streaming error: {e}")
+            raise
+    
+    async def generate_conversation_title(self, first_message: str) -> str:
+        """Generate conversation title"""
+        try:
+            prompt = f"اقترح عنواناً مختصراً لهذه الاستشارة (أقل من 40 حرف): {first_message[:150]}"
             
-            return answer_html
-        except Exception as fallback_error:
-            print(f"❌ خطأ في الاستعلام البديل مع السياق: {fallback_error}")
-            return f"<p>عذراً، حدث خطأ تقني أثناء معالجة السؤال. يرجى المحاولة مرة أخرى.</p>"
+            response = await self.client.chat.completions.create(
+                model="gpt-4o-mini",  # Faster model for titles
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=50,
+                temperature=0.3
+            )
+            
+            title = response.choices[0].message.content.strip()
+            title = title.strip('"').strip("'").strip()
+            
+            # Remove common prefixes
+            prefixes = ["العنوان:", "المقترح:", "عنوان:", "الاستشارة:"]
+            for prefix in prefixes:
+                if title.startswith(prefix):
+                    title = title[len(prefix):].strip()
+            
+            return title if len(title) <= 40 else title[:37] + "..."
+            
+        except Exception as e:
+            print(f"❌ Error generating title: {e}")
+            return first_message[:25] + "..." if len(first_message) > 25 else first_message
 
+# Global instance for easy import
+rag_engine = RAGEngine()
 
-def generate_conversation_title(first_message: str) -> str:
-    """
-    Advanced conversation title generation with error handling.
-    """
-    try:
-        prompt = f"اقترح عنواناً قانونياً متخصصاً ومختصراً لهذه الاستشارة (أقل من 45 حرف): {first_message[:200]}"
+# Legacy sync functions for backward compatibility
+async def ask_question(query: str) -> str:
+    """Legacy sync function - converts streaming to complete response"""
+    chunks = []
+    async for chunk in rag_engine.ask_question_streaming(query):
+        chunks.append(chunk)
+    return ''.join(chunks)
 
-        response = deepseek.chat.completions.create(
-            model="deepseek-chat",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            max_tokens=100,
-            timeout=30  # Quick timeout for titles
-        )
+async def ask_question_with_context(query: str, conversation_history: List[Dict[str, str]]) -> str:
+    """Legacy sync function with context - converts streaming to complete response"""
+    chunks = []
+    async for chunk in rag_engine.ask_question_with_context_streaming(query, conversation_history):
+        chunks.append(chunk)
+    return ''.join(chunks)
 
-        title = response.choices[0].message.content.strip()
-        
-        # Clean up the response
-        title = title.strip('"').strip("'").strip()
-        
-        # Remove common prefixes
-        prefixes = ["العنوان المقترح:", "العنوان:", "المقترح:", "عنوان القضية:", "الاستشارة:"]
-        for prefix in prefixes:
-            if title.startswith(prefix):
-                title = title[len(prefix):].strip()
-        
-        return title if len(title) <= 45 else title[:42] + "..."
-        
-    except Exception as e:
-        print(f"❌ خطأ في توليد العنوان: {e}")
-        
-        # Simple fallback - extract key words from the message
-        if len(first_message) > 25:
-            return first_message[:25] + "..."
-        return first_message
+async def generate_conversation_title(first_message: str) -> str:
+    """Legacy function for title generation"""
+    return await rag_engine.generate_conversation_title(first_message)

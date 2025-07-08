@@ -1,12 +1,13 @@
 """
 Chat service for managing conversations and messages.
-Save this as: backend/app/services/chat_service.py
+Fixed to use Enhanced RAG Engine with OpenAI + Saudi Legal Templates
 """
 
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from datetime import datetime
 import uuid
+import asyncio
 
 from app.models.conversation import Conversation, Message
 from app.models.user import User
@@ -168,6 +169,7 @@ class ChatService:
     ) -> Dict[str, Any]:
         """
         Process a chat message with context from conversation history
+        Using Enhanced RAG Engine with OpenAI + Saudi Legal Templates
         """
         # Check user limits
         can_proceed, limit_message = AuthService.check_user_limits(db, user.id)
@@ -197,16 +199,49 @@ class ChatService:
         # Get conversation context for AI
         context = ChatService.get_conversation_context(db, conversation.id)
         
-        # Process with AI (import here to avoid circular imports)
+        # Process with Enhanced RAG Engine (OpenAI + Saudi Legal Templates)
         start_time = datetime.now()
         try:
-            from rag_engine import ask_question_with_context
-            ai_response = ask_question_with_context(message_content, context)
-        except ImportError:
-            # Fallback to regular ask_question
-            from rag_engine import ask_question
-            ai_response = ask_question(message_content)
-        
+            # Import the Enhanced RAG engine
+            from rag_engine import rag_engine
+            
+            print(f"🤖 Processing with Enhanced RAG: {message_content[:50]}...")
+            print(f"📚 Context messages: {len(context)}")
+            
+            # Convert to async and collect streaming response
+            chunks = []
+            async def collect_response():
+                try:
+                    if context and len(context) > 0:  # If there's conversation history
+                        print("🔄 Using context-aware processing...")
+                        async for chunk in rag_engine.ask_question_with_context_streaming(message_content, context):
+                            chunks.append(chunk)
+                    else:  # First message in conversation
+                        print("🔄 Using standard processing...")
+                        async for chunk in rag_engine.ask_question_streaming(message_content):
+                            chunks.append(chunk)
+                    return ''.join(chunks)
+                except Exception as stream_error:
+                    print(f"❌ Streaming error: {stream_error}")
+                    raise stream_error
+            
+            # Run the async function
+            ai_response = await collect_response()
+            
+            if not ai_response or ai_response.strip() == "":
+                ai_response = "عذراً، لم أتمكن من معالجة سؤالك. يرجى إعادة صياغة السؤال."
+            
+            print(f"✅ Enhanced RAG response generated: {len(ai_response)} characters")
+            
+        except Exception as e:
+            print(f"❌ Enhanced RAG failed: {e}")
+            # Fallback response with helpful message
+            ai_response = f"""عذراً، حدث خطأ مؤقت في النظام.
+
+يرجى المحاولة مرة أخرى، أو إعادة صياغة السؤال بطريقة أخرى.
+
+إذا استمر الخطأ، يمكنك التواصل مع الدعم الفني."""
+
         processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
         
         # Add AI response
