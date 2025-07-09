@@ -218,8 +218,8 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    secret_key       = var.secret_key
-    deepseek_api_key = var.deepseek_api_key
+    secret_key     = var.secret_key
+    openai_api_key = var.openai_api_key
   })
 }
 
@@ -676,7 +676,91 @@ output "cloudfront_url" {
   value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
 
-output "backend_cloudfront_url" {
-  description = "HTTPS URL for backend API"
-  value       = "https://${aws_cloudfront_distribution.backend.domain_name}"
+# ECS Task Definition
+resource "aws_ecs_task_definition" "backend" {
+  family                   = "${var.project_name}-backend"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "1024"
+  memory                   = "2048"
+  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn           = aws_iam_role.ecs_task.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "backend-container"
+      image = "${aws_ecr_repository.backend.repository_url}:latest"
+      
+      essential = true
+      
+      portMappings = [
+        {
+          containerPort = 8000
+          protocol      = "tcp"
+        }
+      ]
+      
+      environment = [
+        {
+          name  = "ENVIRONMENT"
+          value = "production"
+        },
+        {
+          name  = "AI_PROVIDER"
+          value = "openai"
+        },
+        {
+          name  = "CORS_ORIGINS"
+          value = "https://${aws_cloudfront_distribution.frontend.domain_name},https://${aws_cloudfront_distribution.backend.domain_name},http://localhost:3000"
+        }
+      ]
+      
+      secrets = [
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${aws_secretsmanager_secret.database.arn}:password::"
+        },
+        {
+          name      = "SECRET_KEY"
+          valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:secret_key::"
+        },
+        {
+          name      = "OPENAI_API_KEY"
+          valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:openai_api_key::"
+        }
+      ]
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.backend.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "backend"
+        }
+      }
+    }
+  ])
+}
+
+# ECS Service
+resource "aws_ecs_service" "backend" {
+  name            = "${var.project_name}-backend-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.backend.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = aws_subnet.private[*].id
+    security_groups  = [aws_security_group.ecs.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend.arn
+    container_name   = "backend-container"
+    container_port   = 8000
+  }
+
+  depends_on = [aws_lb_listener.backend]
 }
