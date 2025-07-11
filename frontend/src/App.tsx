@@ -2205,6 +2205,7 @@ updateUserData({
   email: response.current_user.email,
   full_name: response.current_user.full_name,
   questions_used_current_cycle: response.current_user.questions_used_current_cycle,
+  
   cycle_reset_time: response.current_user.cycle_reset_time,
   subscription_tier: response.current_user.subscription_tier,
   is_active: response.current_user.is_active,
@@ -2331,144 +2332,126 @@ const handleDeleteCancel = () => {
 };
 
   const handleSendMessage = async () => {
-  if (!inputMessage.trim()) return;
+    if (!inputMessage.trim()) return;
 
-  // 🔧 NEW: Check cooldown first
-  // 🔧 FIX: Different checks for guests vs users
-if (isGuest) {
-  // For guests: only check basic message limits, no cooldown
-  if (!canSendMessage()) {
-    setUpgradePromptType('messages');
-    setShowUpgradePrompt(true);
-    return;
-  }
-} else {
-  // For users: check cooldown
-  if (!canSendMessage()) {
-    if (cooldownInfo.isInCooldown) {
-      showToast(`يجب الانتظار ${cooldownInfo.timeUntilReset} دقيقة قبل طرح سؤال جديد`, 'error');
-    } else {
-      setUpgradePromptType('messages');
-      setShowUpgradePrompt(true);
+    // ✅ UNIFIED: Check cooldown for both user types
+    if (!canSendMessage()) {
+      if (cooldownInfo.isInCooldown) {
+        showToast(`يجب الانتظار حتى الساعة ${cooldownInfo.resetTimeFormatted}`, 'error');
+      } else {
+        if (isGuest) {
+          setUpgradePromptType('messages');
+          setShowUpgradePrompt(true);
+        } else {
+          showToast('تم تجاوز الحد المسموح من الأسئلة', 'error');
+        }
+      }
+      return;
     }
-    return;
-  }
-}
 
-  // ✅ UNIFIED: Check if user can send message (cooldown check)
-if (!canSendMessage()) {
-  if (cooldownInfo.isInCooldown) {
-    showToast(`يجب الانتظار حتى الساعة ${cooldownInfo.resetTimeFormatted}`, 'error');
-  } else {
-    showToast('تم تجاوز الحد المسموح من الأسئلة', 'error');
-  }
-  return;
-}
+    // ✅ PREPARE: User message for immediate display
+    const currentMessage = inputMessage;
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: inputMessage,
+      timestamp: new Date().toISOString()
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage('');
+    setIsLoading(true);
+    incrementQuestionUsage();
 
-const userMessage: Message = {
-  id: Date.now().toString(),
-  role: 'user',
-  content: inputMessage,
-  timestamp: new Date().toISOString()
-};
-setMessages(prev => [...prev, userMessage]);
-const currentMessage = inputMessage;
-setInputMessage('');
-setIsLoading(true);
+    try {
+      // ✅ UNIFIED: Use chatAPI for both guests and auth users
+      const guestSessionId = isGuest ? 
+        `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : 
+        undefined;
 
-// ✅ UNIFIED: Single question counter for all users
-incrementQuestionUsage();
-
-try {
-  if (isGuest) {
-    // ✅ GUESTS: Use simple API with conversation context from messages array
-    let streamingResponse = '';
-const consultation = await legalAPI.askQuestion(currentMessage, messages, (chunk) => {
-  streamingResponse += chunk;
-  // Update the UI with streaming content
-  setMessages(prev => {
-    const lastMessage = prev[prev.length - 1];
-    if (lastMessage?.role === 'assistant') {
-      return prev.slice(0, -1).concat({
-        ...lastMessage,
-        content: formatAIResponse(streamingResponse)
+      console.log('📤 Sending message:', {
+        isGuest,
+        conversationId: selectedConversation,
+        sessionId: guestSessionId
       });
-    } else {
-      return prev.concat({
-        id: Date.now().toString(),
+
+      const chatResponse = await chatAPI.sendMessage(
+        currentMessage, 
+        selectedConversation || undefined,
+        guestSessionId
+      );
+      
+      let aiContent = chatResponse.answer || 
+                     chatResponse.ai_message?.content || 
+                     chatResponse.content;
+      
+      console.log('📥 Received response:', { contentLength: aiContent?.length || 0 });
+
+      // ✅ STREAMING: Create placeholder first
+      const aiMessageId = chatResponse.id || chatResponse.ai_message?.id || (Date.now() + 1).toString();
+      const placeholderMessage: Message = {
+        id: aiMessageId,
         role: 'assistant',
-        content: formatAIResponse(streamingResponse),
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
-});
-    
-    let aiContent = consultation.answer;
-    console.log('🔍 AI Content:', aiContent);
-    
-    const aiMessage: Message = {
-      id: consultation.id,
-      role: 'assistant',
-      content: formatAIResponse(aiContent || 'Response processing error'),
-      timestamp: consultation.timestamp
-    };
-    
-    
-  } else {
-    // ✅ USERS: Use full chat system with database persistence
-    const chatResponse = await chatAPI.sendMessage(currentMessage, selectedConversation || undefined);
-    
-    let aiContent = chatResponse.answer || chatResponse.ai_message?.content || chatResponse.content;
-    console.log('🔍 AI Content:', aiContent);
-    
-    const aiMessage: Message = {
-      id: chatResponse.id || chatResponse.ai_message?.id,
-      role: 'assistant',
-      content: formatAIResponse(aiContent || 'Response processing error'),
-      timestamp: chatResponse.timestamp || chatResponse.ai_message?.timestamp
-    };
-    
-    setMessages(prev => [...prev, aiMessage]);
-    
-    // Update user data for authenticated users
-    if (chatResponse.updated_user) {
-      console.log('🔄 Updating user data from chat response:', chatResponse.updated_user);
-      updateUserData({
-        id: chatResponse.updated_user.id,
-        email: chatResponse.updated_user.email,
-        full_name: chatResponse.updated_user.full_name,
-        questions_used_current_cycle: chatResponse.updated_user.questions_used_current_cycle,
-        cycle_reset_time: chatResponse.updated_user.cycle_reset_time,
-        subscription_tier: chatResponse.updated_user.subscription_tier,
-        is_active: chatResponse.updated_user.is_active,
-        is_verified: chatResponse.updated_user.is_verified
-      });
-    }
-    
-    // Set conversation ID if this is a new conversation
-    if (chatResponse.conversation_id && !selectedConversation) {
-      setSelectedConversation(chatResponse.conversation_id);
-    }
-    
-    // Refresh conversations list for users
-    await loadConversations();
-  }
-  
-} catch (error: any) {
-  console.error('Chat API failed:', error);
-  
-  // Handle cooldown errors specifically
-  if (error.response?.status === 429) {
-    const errorData = error.response.data.detail;
-    showToast(`تم تجاوز الحد المسموح: ${errorData.message}`, 'error');
-  } else {
-    showToast('حدث خطأ في الإرسال. حاول مرة أخرى.', 'error');
-  }
-} finally {
-  setIsLoading(false);
-}};
+        content: '',
+        timestamp: chatResponse.timestamp || chatResponse.ai_message?.timestamp || new Date().toISOString()
+      };
+      
+      setMessages(prev => [...prev, placeholderMessage]);
+      
+      // ✅ STREAMING EFFECT: Show content word by word
+      if (aiContent) {
+        let currentContent = '';
+        const words = aiContent.split(' ');
+        
+        for (let i = 0; i < words.length; i++) {
+          currentContent += (i === 0 ? '' : ' ') + words[i];
+          
+          setMessages(prev => prev.map(msg => 
+            msg.id === aiMessageId 
+              ? { ...msg, content: formatAIResponse(currentContent) }
+              : msg
+          ));
+          
+          await new Promise(resolve => setTimeout(resolve, 30));
+        }
+      }
 
+      if (chatResponse.conversation_id && !selectedConversation) {
+        setSelectedConversation(chatResponse.conversation_id);
+      }
+
+      if (chatResponse.updated_user && !isGuest) {
+        updateUserData({
+          id: chatResponse.updated_user.id,
+          email: chatResponse.updated_user.email,
+          full_name: chatResponse.updated_user.full_name,
+          questions_used_current_cycle: chatResponse.updated_user.questions_used_current_cycle,
+          cycle_reset_time: chatResponse.updated_user.cycle_reset_time,
+          subscription_tier: chatResponse.updated_user.subscription_tier,
+          is_active: chatResponse.updated_user.is_active,
+          is_verified: chatResponse.updated_user.is_verified
+        });
+      }
+
+      if (!isGuest) {
+        await loadConversations();
+      }
+
+      console.log('✅ Message processed successfully');
+      
+    } catch (error: any) {
+      console.error('❌ Chat API failed:', error);
+      setMessages(prev => prev.slice(0, -1));
+      
+      if (error.response?.status === 429) {
+        showToast('تم تجاوز الحد المسموح من الأسئلة', 'error');
+      } else {
+        showToast('حدث خطأ في الإرسال. حاول مرة أخرى.', 'error');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();

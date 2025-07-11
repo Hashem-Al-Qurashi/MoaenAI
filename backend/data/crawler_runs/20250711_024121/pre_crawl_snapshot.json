@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-07-11T02:41:22.707382",
+  "execution_id": "20250711_024121",
+  "config": {
+    "max_documents": 70,
+    "batch_size": 15,
+    "quality_threshold": 6.5,
+    "min_arabic_ratio": 0.6
+  },
+  "system_info": {
+    "python_version": "3.10.12 (main, May 27 2025, 17:12:29) [GCC 11.4.0]",
+    "working_directory": "/home/sakr_quraish/Desktop/arabic_legal_ai/backend",
+    "data_directory": "/home/sakr_quraish/Desktop/arabic_legal_ai/backend/data"
+  }
+}

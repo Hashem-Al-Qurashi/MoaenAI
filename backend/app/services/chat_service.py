@@ -1,6 +1,10 @@
+# File: backend/app/services/chat_service.py
+# ✅ FIXED: ChatService now handles both guests and authenticated users
+
 """
 Chat service for managing conversations and messages.
 Fixed to use Enhanced RAG Engine with OpenAI + Saudi Legal Templates
+SUPPORTS BOTH GUESTS AND AUTHENTICATED USERS
 """
 
 from typing import List, Optional, Dict, Any
@@ -16,7 +20,7 @@ from app.services.user_service import UserService
 
 
 class ChatService:
-    """Service for chat conversation management"""
+    """Service for chat conversation management - supports guests and auth users"""
 
     @staticmethod
     def create_conversation(db: Session, user_id: str, title: Optional[str] = None) -> Conversation:
@@ -163,47 +167,67 @@ class ChatService:
     @staticmethod
     async def process_chat_message(
         db: Session,
-        user: User,
+        user: Optional[User],  # ✅ FIXED: Now Optional[User] to handle guests
         conversation_id: Optional[str],
-        message_content: str
+        message_content: str,
+        session_id: Optional[str] = None  # ✅ NEW: For guest session tracking
     ) -> Dict[str, Any]:
         """
         Process a chat message with context from conversation history
         Using Enhanced RAG Engine with OpenAI + Saudi Legal Templates
+        ✅ SUPPORTS BOTH GUESTS AND AUTHENTICATED USERS
         """
-        # Check user limits
-        can_proceed, limit_message = AuthService.check_user_limits(db, user.id)
-        if not can_proceed:
-            raise Exception(limit_message)
         
-        # Get or create conversation
-        if conversation_id:
-            conversation = db.query(Conversation).filter(
-                Conversation.id == conversation_id,
-                Conversation.user_id == user.id
-            ).first()
-            if not conversation:
-                raise Exception("Conversation not found")
-        else:
-            # Create new conversation
-            conversation = ChatService.create_conversation(
-                db, user.id, 
-                title=message_content[:50] + "..." if len(message_content) > 50 else message_content
+        # ✅ HANDLE: Different logic for guests vs authenticated users
+        if user:
+            # ✅ AUTHENTICATED USER PATH
+            print(f"🔐 Processing message for authenticated user: {user.email}")
+            
+            # Check user limits
+            can_proceed, limit_message = AuthService.check_user_limits(db, user.id)
+            if not can_proceed:
+                raise Exception(limit_message)
+            
+            # Get or create conversation
+            if conversation_id:
+                conversation = db.query(Conversation).filter(
+                    Conversation.id == conversation_id,
+                    Conversation.user_id == user.id
+                ).first()
+                if not conversation:
+                    raise Exception("Conversation not found")
+            else:
+                # Create new conversation
+                conversation = ChatService.create_conversation(
+                    db, user.id, 
+                    title=message_content[:50] + "..." if len(message_content) > 50 else message_content
+                )
+            
+            # Add user message to database
+            user_message = ChatService.add_message_to_conversation(
+                db, conversation.id, "user", message_content
             )
+            
+            # Get conversation context for AI
+            context = ChatService.get_conversation_context(db, conversation.id)
+            
+        else:
+            # ✅ GUEST USER PATH
+            print(f"👤 Processing message for guest user: {session_id}")
+            
+            # ✅ GUEST: No database storage, use in-memory context
+            conversation = None
+            user_message = None
+            
+            # ✅ GUEST: Build context from session (if available)
+            # For now, no persistent context for guests until page refresh
+            context = []  # Could be enhanced later with sessionStorage
         
-        # Add user message
-        user_message = ChatService.add_message_to_conversation(
-            db, conversation.id, "user", message_content
-        )
-        
-        # Get conversation context for AI
-        context = ChatService.get_conversation_context(db, conversation.id)
-        
-        # Process with Enhanced RAG Engine (OpenAI + Saudi Legal Templates)
+        # ✅ UNIFIED: Process with Enhanced RAG Engine (same for both)
         start_time = datetime.now()
         try:
             # Import the Enhanced RAG engine
-            from rag_engine import rag_engine
+            from rag_engine import rag_engine   
             
             print(f"🤖 Processing with Enhanced RAG: {message_content[:50]}...")
             print(f"📚 Context messages: {len(context)}")
@@ -244,32 +268,52 @@ class ChatService:
 
         processing_time = int((datetime.now() - start_time).total_seconds() * 1000)
         
-        # Add AI response
-        ai_message = ChatService.add_message_to_conversation(
-            db, conversation.id, "assistant", ai_response,
-            confidence_score="high",
-            processing_time_ms=str(processing_time)
-        )
-        
-        # Increment user's question usage
-        UserService.increment_question_usage(db, user.id)
-        
-        return {
-            "conversation_id": conversation.id,
-            "conversation_title": conversation.title,
-            "user_message": {
-                "id": user_message.id,
-                "content": user_message.content,
-                "timestamp": user_message.created_at.isoformat()
-            },
-            "ai_message": {
-                "id": ai_message.id,
-                "content": ai_message.content,
-                "timestamp": ai_message.created_at.isoformat(),
-                "processing_time_ms": processing_time
-            },
-            "user_questions_remaining": ChatService._get_remaining_questions(user)
-        }
+        # ✅ HANDLE: Different response structure for guests vs authenticated
+        if user and conversation:
+            # ✅ AUTHENTICATED: Save to database
+            ai_message = ChatService.add_message_to_conversation(
+                db, conversation.id, "assistant", ai_response,
+                confidence_score="high",
+                processing_time_ms=str(processing_time)
+            )
+            
+            # Increment user's question usage
+            UserService.increment_question_usage(db, user.id)
+            
+            return {
+                "conversation_id": conversation.id,
+                "conversation_title": conversation.title,
+                "user_message": {
+                    "id": user_message.id,
+                    "content": user_message.content,
+                    "timestamp": user_message.created_at.isoformat()
+                },
+                "ai_message": {
+                    "id": ai_message.id,
+                    "content": ai_message.content,
+                    "timestamp": ai_message.created_at.isoformat(),
+                    "processing_time_ms": processing_time
+                },
+                "user_questions_remaining": ChatService._get_remaining_questions(user)
+            }
+        else:
+            # ✅ GUEST: Return in-memory response
+            return {
+                "conversation_id": session_id,  # Use session_id as temp conversation_id
+                "conversation_title": "محادثة ضيف",
+                "user_message": {
+                    "id": f"guest_user_{int(datetime.now().timestamp())}",
+                    "content": message_content,
+                    "timestamp": datetime.now().isoformat()
+                },
+                "ai_message": {
+                    "id": f"guest_ai_{int(datetime.now().timestamp())}",
+                    "content": ai_response,
+                    "timestamp": datetime.now().isoformat(),
+                    "processing_time_ms": processing_time
+                },
+                "user_questions_remaining": 999  # Guests have unlimited (with cooldown)
+            }
     
     @staticmethod
     def _get_remaining_questions(user: User) -> int:

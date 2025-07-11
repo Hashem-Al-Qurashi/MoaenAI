@@ -1,0 +1,16 @@
+{
+  "setup_timestamp": "2025-07-11T00:38:00.041892",
+  "results": {
+    "Directory Structure": null,
+    "Python Dependencies": false,
+    "Environment Variables": false,
+    "Example .env File": false,
+    "Crawler Configuration": false,
+    "Run Scripts": true,
+    "Monitoring Config": false,
+    "Database Connectivity": true,
+    "Network Connectivity": false
+  },
+  "success_rate": 22.22222222222222,
+  "ready_for_crawling": false
+}

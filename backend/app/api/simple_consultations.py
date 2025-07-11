@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session
 import uuid
 import json
 from datetime import datetime
-
+from rag_engine import rag_engine
 from app.database import get_database
 from app.models.user import User
-from rag_engine import rag_engine
+from rag_engine import ask_question  # ← This exists and works
 
 router = APIRouter(tags=["consultations"])
 

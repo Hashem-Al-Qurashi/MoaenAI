@@ -100,7 +100,8 @@ async def send_chat_message(
             db=db,
             user=current_user,  # None for guests, User object for signed-in
             conversation_id=conversation_id,
-            message_content=message.strip()
+            message_content=message.strip(),
+            session_id=session_id
         )
         
         # ✅ UNIFIED: Get updated status for response

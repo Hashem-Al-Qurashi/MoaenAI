@@ -1,0 +1,72 @@
+{
+  "crawler_summary": {
+    "started_at": "2025-07-11T18:46:19.604638",
+    "duration_minutes": 1.1581151166666668,
+    "total_urls_discovered": 62,
+    "documents_processed": 2,
+    "success_rate": 3.225806451612903
+  },
+  "quality_metrics": {
+    "successful_extractions": 2,
+    "quality_rejections": 0,
+    "duplicates_found": 0,
+    "errors": 0,
+    "quality_acceptance_rate": 100.0
+  },
+  "storage_results": {
+    "success": true,
+    "message": "Successfully processed 2 documents",
+    "total_documents": 2,
+    "successful": 2,
+    "errors": 32,
+    "error_details": [
+      "Document 1 chunk 1: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 2: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 3: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 4: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 5: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 6: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 7: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 8: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 9: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 10: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 11: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 12: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 13: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 14: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 15: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 16: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 17: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 18: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 19: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 20: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 21: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 1 chunk 22: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 2 chunk 1: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 2 chunk 2: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 2 chunk 3: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 2 chunk 4: Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 13011 tokens (13011 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+      "Document 2 chunk 5: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 2 chunk 6: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 2 chunk 7: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 2 chunk 8: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 2 chunk 9: object CreateEmbeddingResponse can't be used in 'await' expression",
+      "Document 2 chunk 10: object CreateEmbeddingResponse can't be used in 'await' expression"
+    ]
+  },
+  "configuration": {
+    "max_documents": 70,
+    "batch_size": 15,
+    "request_delay": 1.5,
+    "min_content_length": 200,
+    "min_arabic_ratio": 0.6,
+    "min_quality_score": 4.5,
+    "max_retries": 3,
+    "timeout": 60
+  },
+  "next_steps": {
+    "documents_in_database": 2,
+    "ready_for_rag": true,
+    "recommended_next_batch_size": 100
+  }
+}

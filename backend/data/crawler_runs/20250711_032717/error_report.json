@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "execution_id": "20250711_032717",
+  "error": "'SaudiLegalCrawler' object has no attribute 'session'",
+  "timestamp": "2025-07-11T03:29:36.662195"
+}

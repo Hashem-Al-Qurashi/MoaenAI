@@ -1,0 +1,103 @@
+{
+  "execution_metadata": {
+    "execution_id": "20250711_185556",
+    "timestamp": "2025-07-11T18:57:04.677697",
+    "configuration": {
+      "max_documents": 70,
+      "batch_size": 15,
+      "quality_threshold": 4.5,
+      "arabic_ratio_min": 0.6
+    }
+  },
+  "raw_results": {
+    "crawler_summary": {
+      "started_at": "2025-07-11T18:55:57.456751",
+      "duration_minutes": 1.1184018500000001,
+      "total_urls_discovered": 62,
+      "documents_processed": 2,
+      "success_rate": 3.225806451612903
+    },
+    "quality_metrics": {
+      "successful_extractions": 2,
+      "quality_rejections": 0,
+      "duplicates_found": 0,
+      "errors": 0,
+      "quality_acceptance_rate": 100.0
+    },
+    "storage_results": {
+      "success": true,
+      "message": "Successfully processed 2 documents",
+      "total_documents": 2,
+      "successful": 2,
+      "errors": 1,
+      "error_details": [
+        "Document 1 chunk 4: Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 13011 tokens (13011 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}"
+      ]
+    },
+    "configuration": {
+      "max_documents": 70,
+      "batch_size": 15,
+      "request_delay": 1.5,
+      "min_content_length": 200,
+      "min_arabic_ratio": 0.6,
+      "min_quality_score": 4.5,
+      "max_retries": 3,
+      "timeout": 60
+    },
+    "next_steps": {
+      "documents_in_database": 2,
+      "ready_for_rag": true,
+      "recommended_next_batch_size": 100
+    }
+  },
+  "analysis": {
+    "execution_summary": {
+      "execution_id": "20250711_185556",
+      "duration_minutes": 1.1184018500000001,
+      "total_urls_found": 62,
+      "documents_processed": 2,
+      "overall_success_rate": 3.225806451612903
+    },
+    "quality_analysis": {
+      "successful_extractions": 2,
+      "quality_rejections": 0,
+      "duplicates_found": 0,
+      "errors_encountered": 0,
+      "quality_acceptance_rate": 100.0
+    },
+    "storage_analysis": {
+      "documents_stored": 2,
+      "storage_errors": 1,
+      "storage_success_rate": 200.0
+    },
+    "next_phase_recommendation": {
+      "recommendation": "INVESTIGATE_ISSUES",
+      "next_batch_size": 30,
+      "confidence": "VERY_LOW",
+      "rationale": "Poor results - investigate quality issues before scaling"
+    },
+    "phase_result": "NEEDS_IMPROVEMENT"
+  },
+  "recommendations": {
+    "immediate_actions": [
+      "Review quality thresholds - may be too strict",
+      "Investigate common rejection patterns"
+    ],
+    "next_phase": {
+      "recommendation": "INVESTIGATE_ISSUES",
+      "next_batch_size": 30,
+      "confidence": "VERY_LOW",
+      "rationale": "Poor results - investigate quality issues before scaling"
+    },
+    "quality_improvements": [
+      "Quality thresholds are working excellently",
+      "Consider increasing batch size for efficiency",
+      "Ready for more aggressive scaling"
+    ]
+  },
+  "technical_details": {
+    "log_files": "data/logs/crawler_20250711_185556.log",
+    "checkpoint_files": "data/crawler_progress.json",
+    "vector_database": "data/vectors.db"
+  }
+}

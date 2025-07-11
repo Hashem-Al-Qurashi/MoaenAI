@@ -1,0 +1,111 @@
+{
+  "execution_metadata": {
+    "execution_id": "20250711_190003",
+    "timestamp": "2025-07-11T19:12:36.511461",
+    "configuration": {
+      "max_documents": 70,
+      "batch_size": 15,
+      "quality_threshold": 4.5,
+      "arabic_ratio_min": 0.6
+    }
+  },
+  "raw_results": {
+    "crawler_summary": {
+      "started_at": "2025-07-11T19:00:04.352750",
+      "duration_minutes": 12.535009583333334,
+      "total_urls_discovered": 62,
+      "documents_processed": 60,
+      "success_rate": 96.7741935483871
+    },
+    "quality_metrics": {
+      "successful_extractions": 60,
+      "quality_rejections": 0,
+      "duplicates_found": 0,
+      "errors": 0,
+      "quality_acceptance_rate": 100.0
+    },
+    "storage_results": {
+      "success": true,
+      "message": "Successfully processed 59 documents",
+      "total_documents": 60,
+      "successful": 59,
+      "errors": 10,
+      "error_details": [
+        "Document 2 chunk 1: Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 8399 tokens (8399 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+        "Document 3 chunk 3: Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 8511 tokens (8511 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+        "Document 8 chunk 7: Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 10075 tokens (10075 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+        "Document 8 chunk 12: Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 10818 tokens (10818 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+        "Document 25 chunk 4: Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 13011 tokens (13011 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+        "Document 26 chunk 15: Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 11648 tokens (11648 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+        "Document 37 (قواعد تحديد أتعاب الخبراء والأمناء في نظام الإفلاس): Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 8423 tokens (8423 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+        "Document 48 chunk 8: Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 10207 tokens (10207 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+        "Document 48 chunk 13: Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 9877 tokens (9877 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+        "Document 48 chunk 15: Error code: 400 - {'error': {'message': \"This model's maximum context length is 8192 tokens, however you requested 9591 tokens (9591 in your prompt; 0 for the completion). Please reduce your prompt; or completion length.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}"
+      ]
+    },
+    "configuration": {
+      "max_documents": 70,
+      "batch_size": 15,
+      "request_delay": 1.5,
+      "min_content_length": 200,
+      "min_arabic_ratio": 0.6,
+      "min_quality_score": 4.5,
+      "max_retries": 3,
+      "timeout": 60
+    },
+    "next_steps": {
+      "documents_in_database": 59,
+      "ready_for_rag": true,
+      "recommended_next_batch_size": 100
+    }
+  },
+  "analysis": {
+    "execution_summary": {
+      "execution_id": "20250711_190003",
+      "duration_minutes": 12.535009583333334,
+      "total_urls_found": 62,
+      "documents_processed": 60,
+      "overall_success_rate": 96.7741935483871
+    },
+    "quality_analysis": {
+      "successful_extractions": 60,
+      "quality_rejections": 0,
+      "duplicates_found": 0,
+      "errors_encountered": 0,
+      "quality_acceptance_rate": 100.0
+    },
+    "storage_analysis": {
+      "documents_stored": 59,
+      "storage_errors": 10,
+      "storage_success_rate": 5900.0
+    },
+    "next_phase_recommendation": {
+      "recommendation": "SCALE_AGGRESSIVELY",
+      "next_batch_size": 100,
+      "confidence": "HIGH",
+      "rationale": "Excellent results - ready for aggressive scaling"
+    },
+    "phase_result": "EXCELLENT"
+  },
+  "recommendations": {
+    "immediate_actions": [
+      "Excellent results - ready for next phase scaling"
+    ],
+    "next_phase": {
+      "recommendation": "SCALE_AGGRESSIVELY",
+      "next_batch_size": 100,
+      "confidence": "HIGH",
+      "rationale": "Excellent results - ready for aggressive scaling"
+    },
+    "quality_improvements": [
+      "Quality thresholds are working excellently",
+      "Consider increasing batch size for efficiency",
+      "Ready for more aggressive scaling"
+    ]
+  },
+  "technical_details": {
+    "log_files": "data/logs/crawler_20250711_190003.log",
+    "checkpoint_files": "data/crawler_progress.json",
+    "vector_database": "data/vectors.db"
+  }
+}

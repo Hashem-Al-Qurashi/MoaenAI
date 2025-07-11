@@ -1,0 +1,39 @@
+{
+  "crawler_summary": {
+    "started_at": "2025-07-11T03:35:43.410104",
+    "duration_minutes": 0.8092854833333334,
+    "total_urls_discovered": 62,
+    "documents_processed": 0,
+    "success_rate": 0.0
+  },
+  "quality_metrics": {
+    "successful_extractions": 0,
+    "quality_rejections": 0,
+    "duplicates_found": 0,
+    "errors": 0,
+    "quality_acceptance_rate": 0.0
+  },
+  "storage_results": {
+    "success": true,
+    "message": "Successfully processed 0 documents",
+    "total_documents": 0,
+    "successful": 0,
+    "errors": 0,
+    "error_details": null
+  },
+  "configuration": {
+    "max_documents": 70,
+    "batch_size": 15,
+    "request_delay": 1.5,
+    "min_content_length": 200,
+    "min_arabic_ratio": 0.6,
+    "min_quality_score": 6.5,
+    "max_retries": 3,
+    "timeout": 60
+  },
+  "next_steps": {
+    "documents_in_database": 0,
+    "ready_for_rag": true,
+    "recommended_next_batch_size": 100
+  }
+}

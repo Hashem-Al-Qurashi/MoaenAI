@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "execution_id": "20250711_005232",
+  "error": "DocumentService.__init__() missing 1 required positional argument: 'ai_client'",
+  "timestamp": "2025-07-11T00:52:32.788696"
+}
