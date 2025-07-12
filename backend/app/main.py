@@ -1,26 +1,24 @@
+# backend/app/main.py - Clean Architecture, No Legacy
+
 """
-Ultimate Arabic Legal Assistant - Complete Feature Set
-Combines JWT authentication, guest access, chat system, and direct RAG
+Ultimate Arabic Legal Assistant - Unified Chat System
+Single chat API for all users (guests + authenticated)
 """
-from app.api.chat import router as chat_router
-from fastapi import FastAPI, HTTPException, Query, Form, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from datetime import datetime
-import io
 import os
-import re
 
 # Import routers
-from app.api.simple_auth import router as auth_router  # ← CORRECT!
-from app.api.simple_consultations import router as consultations_router
+from app.api.simple_auth import router as auth_router
+from app.api.chat import router as chat_router
 
 # Initialize database tables
 from app.database import engine, Base
 Base.metadata.create_all(bind=engine)
 print("✅ Database tables created!")
 
-# ✅ CORS using environment variable with fallback
 def get_cors_origins():
     """Get CORS origins from environment or use defaults"""
     cors_origins = os.getenv("CORS_ORIGINS")
@@ -34,17 +32,17 @@ app = FastAPI(
     description="""
     🇸🇦 استشارة قانونية ومالية وإدارية ذكية مبنية على القانون السعودي
     
-    Complete Arabic Legal Assistant with:
+    Unified Arabic Legal Assistant with:
     - JWT-based user authentication and management
-    - Guest access for basic consultations
-    - AI-powered legal consultations with conversation memory
+    - Guest access with session-based conversation memory
+    - AI-powered legal consultations with full context awareness
+    - Persistent conversations for authenticated users
     - Document export capabilities with perfect Arabic support
-    - Multi-domain consultation support (Legal, Financial, Administrative)
     """,
-    version="2.0.0"
+    version="3.0.0"
 )
 
-# ✅ Add CORS middleware using environment variable
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
@@ -53,11 +51,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Debug log CORS configuration
-cors_origins = get_cors_origins()
-print(f"🌐 CORS Origins configured: {cors_origins}")
+print(f"🌐 CORS Origins configured: {get_cors_origins()}")
 
-# ✅ CRITICAL FIX: Add global OPTIONS handler for CORS preflight
+# Global OPTIONS handler for CORS preflight
 @app.options("/{full_path:path}")
 async def options_handler(request: Request):
     """Handle CORS preflight requests for all routes"""
@@ -66,170 +62,68 @@ async def options_handler(request: Request):
         headers={
             "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Credentials": "true"
         }
     )
 
-# ✅ Include authentication and user management routers
-app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(consultations_router, prefix="/api", tags=["Guest Consultations"])
-app.include_router(chat_router, prefix="/api", tags=["Chat System"])
+# 🔥 Include routers - ONLY MODERN APIS
+app.include_router(auth_router, prefix="/api/auth")
+app.include_router(chat_router, prefix="/api")
 
-# ✅ GUEST ACCESS: Direct RAG endpoint for non-authenticated users
-# ✅ Enhanced DOCX export with perfect Arabic support
-def create_enhanced_docx_stream(question: str, answer: str) -> io.BytesIO:
-    """Create enhanced DOCX with perfect Arabic support"""
-    buffer = io.BytesIO()
-    
-    try:
-        from docx import Document
-        from docx.shared import Pt
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        
-        # Create Word document
-        doc = Document()
-        
-        # Clean HTML tags from content
-        clean_question = re.sub('<[^<]+?>', '', question)
-        clean_answer = re.sub('<[^<]+?>', '', answer)
-        clean_answer = clean_answer.replace('&nbsp;', ' ')
-        
-        # Document title
-        title = doc.add_heading('المساعد القانوني الذكي 🇸🇦', 0)
-        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
-        # Subtitle
-        subtitle = doc.add_paragraph('استشارة قانونية ذكية مبنية على القانون السعودي')
-        subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
-        # Add separator line
-        doc.add_paragraph('─' * 50).alignment = WD_ALIGN_PARAGRAPH.CENTER
-        doc.add_paragraph()
-        
-        # Question section
-        question_heading = doc.add_heading('📋 السؤال:', level=1)
-        question_heading.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        
-        question_para = doc.add_paragraph(clean_question)
-        question_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        for run in question_para.runs:
-            run.font.size = Pt(12)
-        
-        doc.add_paragraph()
-        
-        # Answer section
-        answer_heading = doc.add_heading('✅ الإجابة:', level=1)
-        answer_heading.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        
-        answer_para = doc.add_paragraph(clean_answer)
-        answer_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        for run in answer_para.runs:
-            run.font.size = Pt(11)
-        
-        # Footer
-        doc.add_paragraph()
-        doc.add_paragraph()
-        
-        footer_line = doc.add_paragraph('─' * 50)
-        footer_line.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
-        timestamp_text = f"تاريخ الإنشاء: {datetime.now().strftime('%Y-%m-%d الساعة %H:%M')}"
-        footer_para = doc.add_paragraph(timestamp_text)
-        footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        
-        # Add disclaimer
-        disclaimer = doc.add_paragraph()
-        disclaimer_run = disclaimer.add_run(
-            'تنبيه: هذه الاستشارة القانونية مبنية على الذكاء الاصطناعي وتهدف للإرشاد العام. '
-            'للحصول على استشارة قانونية دقيقة، يُنصح بالتواصل مع محامٍ مختص.'
-        )
-        disclaimer.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        disclaimer_run.font.size = Pt(9)
-        disclaimer_run.italic = True
-        
-        # Save to buffer
-        doc.save(buffer)
-        
-    except Exception as e:
-        print(f"DOCX creation error: {e}")
-        # Create simple fallback document
-        from docx import Document
-        doc = Document()
-        doc.add_heading('خطأ في إنشاء المستند', 0)
-        doc.add_paragraph('حدث خطأ أثناء إنشاء المستند. يرجى المحاولة مرة أخرى.')
-        doc.add_paragraph(f'تفاصيل الخطأ: {str(e)}')
-        doc.save(buffer)
-    
-    buffer.seek(0)
-    return buffer
-
-@app.get("/export/docx")
-async def export_docx(question: str = Query(...), answer: str = Query(...)):
-    """Export legal response as DOCX with perfect Arabic support"""
-    try:
-        print(f"📝 Generating enhanced DOCX export...")
-        
-        # Create enhanced DOCX
-        docx_buffer = create_enhanced_docx_stream(question, answer)
-        
-        # Generate filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"legal_consultation_{timestamp}.docx"
-        
-        print(f"✅ Enhanced DOCX export generated: {filename}")
-        
-        return StreamingResponse(
-            io.BytesIO(docx_buffer.read()),
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={
-                "Content-Disposition": f"attachment; filename={filename}",
-                "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+# 🔥 LEGACY API REDIRECT - Graceful transition
+@app.post("/api/ask")
+async def legacy_api_redirect():
+    """
+    🚨 DEPRECATED: This endpoint has been replaced by the unified chat API
+    All users should now use /api/chat/message for the best experience
+    """
+    raise HTTPException(
+        status_code=410,  # Gone
+        detail={
+            "error": "Legacy API deprecated",
+            "message": "This endpoint has been replaced by the unified chat system",
+            "new_endpoint": "/api/chat/message",
+            "migration_guide": {
+                "old": "POST /api/ask with form data",
+                "new": "POST /api/chat/message with form data",
+                "benefits": [
+                    "Conversation memory for all users",
+                    "Better context awareness",
+                    "Session-based memory for guests",
+                    "Unified experience"
+                ]
             }
-        )
-        
-    except Exception as e:
-        print(f"❌ DOCX export error: {e}")
-        raise HTTPException(status_code=500, detail=f"خطأ في إنشاء ملف Word: {str(e)}")
+        }
+    )
 
-# ✅ Legal categories endpoint
-@app.get("/api/categories")
-async def get_legal_categories():
-    """Get available legal categories for consultation classification"""
-    categories = [
-        {"id": "commercial", "name": "القانون التجاري", "emoji": "💼"},
-        {"id": "labor", "name": "قانون العمل", "emoji": "👷"},
-        {"id": "real_estate", "name": "القانون العقاري", "emoji": "🏠"},
-        {"id": "family", "name": "الأحوال الشخصية", "emoji": "👨‍👩‍👧‍👦"},
-        {"id": "criminal", "name": "القانون الجنائي", "emoji": "⚖️"},
-        {"id": "administrative", "name": "القانون الإداري", "emoji": "🏛️"},
-        {"id": "general", "name": "استشارة عامة", "emoji": "📋"}
-    ]
-    return {"categories": categories}
-
-# ✅ Enhanced health check endpoint
 @app.get("/")
 async def root():
-    """Enhanced API health check with full feature overview"""
+    """API root with system information"""
     return {
-        "status": "healthy",
-        "message": "🇸🇦 Arabic Legal AI Assistant - Ultimate Edition",
-        "version": "2.0.0",
+        "service": "Arabic Legal Assistant - Unified Edition",
+        "version": "3.0.0",
+        "status": "active",
         "features": {
-            "authentication": "JWT-based user management",
-            "guest_access": "Direct legal consultation for guests",
-            "chat_system": "Conversation memory for authenticated users",
-            "export": "Enhanced DOCX with perfect Arabic support",
-            "categories": "Multi-domain legal classification",
-            "ai_engine": "DeepSeek-powered RAG system"
+            "unified_chat": "Single chat API for guests and authenticated users",
+            "conversation_memory": "Context-aware responses for all users",
+            "guest_sessions": "Session-based memory for guests",
+            "persistent_storage": "Database conversations for authenticated users",
+            "jwt_auth": "Secure authentication system",
+            "arabic_support": "Native Arabic language support",
+            "export": "Enhanced DOCX export with Arabic support"
         },
         "endpoints": {
-            "guest": "/api/ask",
             "auth": "/api/auth/*",
             "chat": "/api/chat/*",
-            "users": "/api/users/*",
-            "export": "/export/docx",
-            "categories": "/api/categories"
+            "status": "/api/chat/status",
+            "guest_session": "/api/chat/guest/session"
+        },
+        "architecture": {
+            "type": "Unified Chat System",
+            "legacy_apis": "Deprecated and removed",
+            "tech_debt": "Zero - Single codebase",
+            "memory_system": "Context-aware for all user types"
         },
         "cors_origins": get_cors_origins(),
         "environment": os.getenv("ENVIRONMENT", "development"),
@@ -238,14 +132,28 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Simple health check endpoint"""
+    """Health check endpoint"""
     return {
         "status": "healthy", 
         "timestamp": datetime.now().isoformat(),
-        "service": "Arabic Legal Assistant - Ultimate Edition",
-        "features": ["jwt_auth", "guest_access", "chat_memory", "docx_export", "arabic_support"]
+        "service": "Arabic Legal Assistant - Unified Edition",
+        "version": "3.0.0",
+        "features": [
+            "unified_chat", 
+            "guest_sessions", 
+            "conversation_memory", 
+            "jwt_auth", 
+            "arabic_support"
+        ]
     }
 
-print("🚀 Arabic Legal Assistant Ultimate Edition started!")
-print("✅ Features: JWT Auth + Guest Access + Chat Memory + Enhanced Export")
+# 🚨 Remove all legacy imports and endpoints
+# - No more simple_consultations router
+# - No more dual API system
+# - Single source of truth: chat API
+
+print("🚀 Arabic Legal Assistant Unified Edition started!")
+print("✅ Features: Unified Chat + Guest Sessions + Context Memory + Zero Tech Debt")
 print(f"🌐 CORS configured for: {get_cors_origins()}")
+print("🔥 Legacy APIs removed - Single chat system for all users!")
+print("📊 Architecture: Zero tech debt, maximum maintainability")

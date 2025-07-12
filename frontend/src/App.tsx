@@ -2387,34 +2387,14 @@ const handleDeleteCancel = () => {
       
       console.log('📥 Received response:', { contentLength: aiContent?.length || 0 });
 
-      // ✅ STREAMING: Create placeholder first
-      const aiMessageId = chatResponse.id || chatResponse.ai_message?.id || (Date.now() + 1).toString();
-      const placeholderMessage: Message = {
-        id: aiMessageId,
+      const aiMessage: Message = {
+        id: chatResponse.id || chatResponse.ai_message?.id || (Date.now() + 1).toString(),
         role: 'assistant',
-        content: '',
+        content: formatAIResponse(aiContent || 'حدث خطأ في معالجة الرد'),
         timestamp: chatResponse.timestamp || chatResponse.ai_message?.timestamp || new Date().toISOString()
       };
       
-      setMessages(prev => [...prev, placeholderMessage]);
-      
-      // ✅ STREAMING EFFECT: Show content word by word
-      if (aiContent) {
-        let currentContent = '';
-        const words = aiContent.split(' ');
-        
-        for (let i = 0; i < words.length; i++) {
-          currentContent += (i === 0 ? '' : ' ') + words[i];
-          
-          setMessages(prev => prev.map(msg => 
-            msg.id === aiMessageId 
-              ? { ...msg, content: formatAIResponse(currentContent) }
-              : msg
-          ));
-          
-          await new Promise(resolve => setTimeout(resolve, 30));
-        }
-      }
+      setMessages(prev => [...prev, aiMessage]);
 
       if (chatResponse.conversation_id && !selectedConversation) {
         setSelectedConversation(chatResponse.conversation_id);
