@@ -267,7 +267,85 @@ async sendMessage(message: string, conversationId?: string, sessionId?: string):
     
     return response.data;
   },
+  // Add this method to your existing chatAPI object (after sendMessage):
+async sendMessageStreaming(
+  message: string,
+  conversationId?: string,
+  sessionId?: string,
+  onChunk?: (chunk: string) => void,
+  onComplete?: (response: any) => void,
+  onError?: (error: string) => void
+): Promise<void> {
+  const formData = new FormData();
+  formData.append('message', message);
+  
+  if (conversationId) {
+    formData.append('conversation_id', conversationId);
+  }
+  
+  if (sessionId) {
+    formData.append('session_id', sessionId);
+  }
 
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/chat/message`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'text/event-stream',
+        ...(getToken() && { 'Authorization': `Bearer ${getToken()}` }),
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('No response body');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullResponse = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') return;
+
+          try {
+            const parsed = JSON.parse(data);
+            
+            if (parsed.type === 'chunk' && parsed.content && onChunk) {
+              fullResponse += parsed.content;
+              onChunk(parsed.content);
+            } else if (parsed.type === 'complete' && onComplete) {
+              onComplete({ ...parsed, fullResponse });
+            } else if (parsed.type === 'error' && onError) {
+              onError(parsed.error);
+              return;
+            }
+          } catch (e) {
+            // Skip invalid JSON
+          }
+        }
+      }
+    }
+  } catch (error) {
+    if (onError) {
+      onError(error instanceof Error ? error.message : 'Streaming failed');
+    }
+    throw error;
+  }
+},
   
   async archiveConversation(conversationId: string): Promise<any> {
     const response = await api.delete(`/api/chat/conversations/${conversationId}`);

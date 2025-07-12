@@ -294,7 +294,8 @@ class ChatService:
                 )
                 
                 # Update user question count
-                AuthService.increment_user_questions(db, user.id)
+                from app.services.user_service import UserService
+                UserService.increment_question_usage(db, user.id)
                 
             else:
                 # Add AI response to guest session

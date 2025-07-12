@@ -2332,106 +2332,145 @@ const handleDeleteCancel = () => {
 };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
+  if (!inputMessage.trim()) return;
 
-    // ✅ UNIFIED: Check cooldown for both user types
-    if (!canSendMessage()) {
-      if (cooldownInfo.isInCooldown) {
-        showToast(`يجب الانتظار حتى الساعة ${cooldownInfo.resetTimeFormatted}`, 'error');
+  // ✅ UNIFIED: Check cooldown for both user types
+  if (!canSendMessage()) {
+    if (cooldownInfo.isInCooldown) {
+      showToast(`يجب الانتظار حتى الساعة ${cooldownInfo.resetTimeFormatted}`, 'error');
+    } else {
+      if (isGuest) {
+        setUpgradePromptType('messages');
+        setShowUpgradePrompt(true);
       } else {
-        if (isGuest) {
-          setUpgradePromptType('messages');
-          setShowUpgradePrompt(true);
-        } else {
-          showToast('تم تجاوز الحد المسموح من الأسئلة', 'error');
-        }
-      }
-      return;
-    }
-
-    // ✅ PREPARE: User message for immediate display
-    const currentMessage = inputMessage;
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: inputMessage,
-      timestamp: new Date().toISOString()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
-    setIsLoading(true);
-    incrementQuestionUsage();
-
-    try {
-      // ✅ UNIFIED: Use chatAPI for both guests and auth users
-      const guestSessionId = isGuest ? 
-        `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : 
-        undefined;
-
-      console.log('📤 Sending message:', {
-        isGuest,
-        conversationId: selectedConversation,
-        sessionId: guestSessionId
-      });
-
-      const chatResponse = await chatAPI.sendMessage(
-        currentMessage, 
-        selectedConversation || undefined,
-        guestSessionId
-      );
-      
-      let aiContent = chatResponse.answer || 
-                     chatResponse.ai_message?.content || 
-                     chatResponse.content;
-      
-      console.log('📥 Received response:', { contentLength: aiContent?.length || 0 });
-
-      const aiMessage: Message = {
-        id: chatResponse.id || chatResponse.ai_message?.id || (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: formatAIResponse(aiContent || 'حدث خطأ في معالجة الرد'),
-        timestamp: chatResponse.timestamp || chatResponse.ai_message?.timestamp || new Date().toISOString()
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-
-      if (chatResponse.conversation_id && !selectedConversation) {
-        setSelectedConversation(chatResponse.conversation_id);
-      }
-
-      if (chatResponse.updated_user && !isGuest) {
-        updateUserData({
-          id: chatResponse.updated_user.id,
-          email: chatResponse.updated_user.email,
-          full_name: chatResponse.updated_user.full_name,
-          questions_used_current_cycle: chatResponse.updated_user.questions_used_current_cycle,
-          cycle_reset_time: chatResponse.updated_user.cycle_reset_time,
-          subscription_tier: chatResponse.updated_user.subscription_tier,
-          is_active: chatResponse.updated_user.is_active,
-          is_verified: chatResponse.updated_user.is_verified
-        });
-      }
-
-      if (!isGuest) {
-        await loadConversations();
-      }
-
-      console.log('✅ Message processed successfully');
-      
-    } catch (error: any) {
-      console.error('❌ Chat API failed:', error);
-      setMessages(prev => prev.slice(0, -1));
-      
-      if (error.response?.status === 429) {
         showToast('تم تجاوز الحد المسموح من الأسئلة', 'error');
-      } else {
+      }
+    }
+    return;
+  }
+
+  // ✅ PREPARE: User message for immediate display
+  const currentMessage = inputMessage;
+  const userMessage: Message = {
+    id: Date.now().toString(),
+    role: 'user',
+    content: inputMessage,
+    timestamp: new Date().toISOString()
+  };
+
+  setMessages(prev => [...prev, userMessage]);
+  setInputMessage('');
+  setIsLoading(true);
+  incrementQuestionUsage();
+
+  // ✅ UNIFIED: Use chatAPI for both guests and auth users
+  const guestSessionId = isGuest ?
+    `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` :
+    undefined;
+
+  console.log('📤 Sending message:', {
+    isGuest,
+    conversationId: selectedConversation,
+    sessionId: guestSessionId
+  });
+
+  try {
+    // 🔥 Create assistant message for real-time streaming updates
+    const assistantMessageId = (Date.now() + 1).toString();
+    let streamingContent = '';
+
+    // Add empty assistant message that will be updated in real-time
+    setMessages(prev => [...prev, {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toISOString()
+    }]);
+
+    // 🚀 REAL STREAMING with conversation memory
+    await chatAPI.sendMessageStreaming(
+      currentMessage,
+      selectedConversation || undefined,
+      guestSessionId,
+      
+      // 📡 Real-time streaming callback
+      (chunk: string) => {
+        streamingContent += chunk;
+        
+        // Update the assistant message in real-time
+        setMessages(prev => prev.map(msg => 
+          msg.id === assistantMessageId 
+            ? { ...msg, content: formatAIResponse(streamingContent) }
+            : msg
+        ));
+      },
+      
+      // ✅ Completion handler
+      (response: any) => {
+        console.log('📥 Received response:', { contentLength: response.fullResponse?.length || 0 });
+        
+        // Update final message with complete data
+        setMessages(prev => prev.map(msg => 
+          msg.id === assistantMessageId 
+            ? { 
+                ...msg, 
+                id: response.ai_message?.id || assistantMessageId,
+                content: formatAIResponse(response.ai_message?.content || streamingContent),
+                timestamp: response.ai_message?.timestamp || new Date().toISOString()
+              }
+            : msg
+        ));
+
+        // 🔄 Handle conversation and user data updates (your existing logic)
+        if (response.conversation_id && !selectedConversation) {
+          setSelectedConversation(response.conversation_id);
+        }
+
+        if (response.updated_user && !isGuest) {
+          updateUserData({
+            id: response.updated_user.id,
+            email: response.updated_user.email,
+            full_name: response.updated_user.full_name,
+            questions_used_current_cycle: response.updated_user.questions_used_current_cycle,
+            cycle_reset_time: response.updated_user.cycle_reset_time,
+            subscription_tier: response.updated_user.subscription_tier,
+            is_active: response.updated_user.is_active,
+            is_verified: response.updated_user.is_verified
+          });
+        }
+
+        if (!isGuest) {
+          loadConversations();
+        }
+
+        console.log('✅ Message processed successfully');
+      },
+      
+      // ❌ Error handler
+      (error: string) => {
+        console.error('❌ Streaming failed:', error);
+        
+        // Remove the assistant message on streaming error
+        setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
         showToast('حدث خطأ في الإرسال. حاول مرة أخرى.', 'error');
       }
-    } finally {
-      setIsLoading(false);
+    );
+
+  } catch (error: any) {
+    console.error('❌ Chat API failed:', error);
+    
+    // Remove user message on complete failure
+    setMessages(prev => prev.slice(0, -2)); // Remove both user and assistant messages
+    
+    if (error.response?.status === 429) {
+      showToast('تم تجاوز الحد المسموح من الأسئلة', 'error');
+    } else {
+      showToast('حدث خطأ في الإرسال. حاول مرة أخرى.', 'error');
     }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();

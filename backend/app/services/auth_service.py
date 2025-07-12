@@ -22,7 +22,7 @@ class AuthService:
         
         # Free tier limits
         if user.subscription_tier == "free":
-            if user.questions_used_this_month >= 100:
+            if user.questions_used_this_month >= 100    :
                 return False, "Free tier limit reached (20 questions/month). Please upgrade to Pro."
         
         # Pro tier limits

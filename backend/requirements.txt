@@ -40,3 +40,6 @@ gunicorn==21.2.0
 # Development tools
 pytest==7.4.3
 pytest-asyncio==0.21.1
+
+aiosqlite>=0.19.0
+numpy>=1.24.0
