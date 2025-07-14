@@ -34,10 +34,26 @@ class LegalDocumentTypeAnalyzer:
                 'مذكرة استئناف', 'لائحة اعتراض', 'طلب استئناف',
                 'اعتراض على الحكم', 'استئناف الحكم'
             ],
-            'motion': [
-                'طلب وقتي', 'طلب مستعجل', 'طلب تحفظي',
-                'التماس', 'طلب إثبات حالة', 'طلب خبرة'
-            ]
+    'motion': [
+        'طلب وقتي', 'طلب مستعجل', 'طلب تحفظي',
+        'التماس', 'طلب إثبات حالة', 'طلب خبرة'
+    ],
+    'execution_dispute': [
+        'منازعة تنفيذ', 'اعتراض على تنفيذ', 'وقف تنفيذ',
+        'تنفيذ أحكام أجنبية', 'سندات تجارية باطلة'
+    ],
+    'family_inheritance_challenge': [
+        'معارضة حصر إرث', 'دعوى معارضة في صك حصر إرث',
+        'مذكرة جوابية أحوال شخصية'
+    ],
+    'criminal_appeal': [
+        'استئناف على حكم جزائي', 'اعتراض على حكم تعزير',
+        'الشق الموضوعي والشكلي'
+    ],
+    'administrative_compensation': [
+        'دعوى تعويض إداري', 'اعتراض على قرار إداري',
+        'ديوان المظالم'
+    ]
         }
         
         # Contract patterns
@@ -111,6 +127,16 @@ class LegalDocumentTypeAnalyzer:
     
     def _detect_court_filing(self, query: str) -> Optional[str]:
         """Detect court filing document type"""
+         # Check for document writing requests
+        if any(phrase in query for phrase in ['أريد كتابة', 'اكتب لي', 'صياغة']):
+            if 'منازعة تنفيذ' in query:
+                return 'execution_dispute'
+            elif 'مذكرة جوابية' in query:
+                return 'defense_memo'
+            elif 'لائحة اعتراضية' in query:
+                return 'appeal'
+            elif 'لائحة دعوى' in query:
+                return 'lawsuit'
         for doc_type, patterns in self.court_filing_patterns.items():
             if any(pattern in query for pattern in patterns):
                 return doc_type
