@@ -48,6 +48,10 @@ else:
     raise ValueError("❌ Either OPENAI_API_KEY or DEEPSEEK_API_KEY must be provided in environment")
 
 
+
+
+
+
 class StorageFactory:
     """Factory for creating storage backends based on configuration"""
     
@@ -979,7 +983,7 @@ class LegalReasoningRAGEngine:
             )
             
             # 🎯 Stage 3: Use Enhanced Master Controller with dynamic AI analysis
-            legal_prompt = self.master_controller.generate_prompt_for_query(
+            legal_prompt = await self.master_controller.generate_prompt_for_query(
                 query=query,
                 retrieved_documents=relevant_chunks,
                 conversation_history=[]
@@ -1001,7 +1005,7 @@ class LegalReasoningRAGEngine:
             # Stream legal advice
             yield "⚖️ **الاستشارة القانونية**\n\n"
             
-            async for chunk in await self._stream_legal_response(messages):
+            async for chunk in self._stream_legal_response(messages):
                 yield chunk
                 
         except Exception as e:
