@@ -1223,7 +1223,7 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({
       
       <div
         className="ai-response"
-        dangerouslySetInnerHTML={{ __html: content }}
+          dangerouslySetInnerHTML={{ __html: formatAIResponse(content) }}  // ← ADD formatAIResponse here
         style={{
           // Enhanced Typography
           fontFamily: "'Noto Sans Arabic', 'SF Pro Text', -apple-system, sans-serif",
@@ -1416,46 +1416,122 @@ interface TableData {
   rows: string[][];
 }
 
+// Clean formatAIResponse function - No colors, just clean structure
 const formatAIResponse = (content: string): string => {
-  // If content has HTML tags, return as-is
+  // If content already has HTML tags, return as-is
   if (content.includes('<table') || content.includes('<tr') || content.includes('<td')) {
     return content;
   }
   
-  // Enhanced markdown-like formatting with TABLE DETECTION
-  let formattedContent = content;
+  // Clean up the content first
+  let formattedContent = content
+    .replace(/\n{3,}/g, '\n\n') // Remove excessive newlines
+    .replace(/\r\n/g, '\n') // Normalize line endings
+    .trim();
   
   // STEP 1: Convert markdown tables to HTML tables
   formattedContent = convertMarkdownTables(formattedContent);
   
-  // STEP 2: Convert text-based tables to HTML tables
+  // STEP 2: Convert text-based tables to HTML tables  
   formattedContent = convertTextTables(formattedContent);
   
-  // STEP 3: Apply other formatting (if no HTML tags present)
-  if (!formattedContent.includes('<') && !formattedContent.includes('>')) {
+  // STEP 3: Apply clean formatting - FIXED
+  if (!formattedContent.includes('<table') && !formattedContent.includes('<tr')) {
     formattedContent = formattedContent
-      // Headers
-      .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-      .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-      .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-      // Bold text
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      // Bullet points with asterisks
-      .replace(/^\* (.*$)/gm, '<li style="font-style: italic; list-style-type: disc; margin-right: 20px;">$1</li>')
-      // Regular numbered lists
-      .replace(/^(\d+)\. (.*$)/gm, '<li style="list-style-type: decimal; margin-right: 20px;">$1. $2</li>')
-      // Regular dash lists
-      .replace(/^- (.*$)/gm, '<li style="list-style-type: disc; margin-right: 20px;">$1</li>')
-      // Single asterisk for emphasis
-      .replace(/(?<!^)\*(.*?)\*/g, '<em>$1</em>')
-      // Line breaks and paragraphs
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/^(.*)$/gm, '<p>$1</p>')
-      // Wrap consecutive list items in proper ul tags
-      .replace(/(<li[^>]*>.*?<\/li>(?:\s*<li[^>]*>.*?<\/li>)*)/g, '<ul>$1</ul>');
+      // Headers (all levels) - Clean and simple
+      .replace(/^#{4}\s+(.*$)/gm, '<h4 style="font-weight: 700; margin: 1rem 0 0.5rem 0; text-align: right; direction: rtl;">$1</h4>')
+      .replace(/^#{3}\s+(.*$)/gm, '<h3 style="font-weight: 700; margin: 1rem 0 0.5rem 0; text-align: right; direction: rtl;">$1</h3>')
+      .replace(/^#{2}\s+(.*$)/gm, '<h2 style="font-weight: 700; margin: 1.5rem 0 0.5rem 0; text-align: right; direction: rtl;">$1</h2>')
+      .replace(/^#{1}\s+(.*$)/gm, '<h1 style="font-weight: 700; margin: 1.5rem 0 0.5rem 0; text-align: right; direction: rtl;">$1</h1>')
+      
+      // Emoji headers (like 📋 الإجراءات المطلوبة) - Clean style
+      .replace(/^([📋🔍💼⚖️📊📝✅❌🎯🔥📄🚀💡⭐🎉🏛️🏠👤💰📑🎨🔧⚡🌟🎯]+)\s+(.+)$/gm, '<div style="font-size: 1.3rem; font-weight: 700; margin: 1.5rem 0 1rem 0; text-align: right; direction: rtl; padding: 0.5rem 0; border-bottom: 1px solid #e0e0e0;"><span style="margin-left: 0.5rem;">$1</span>$2</div>')
+      
+      // Section numbers with colons (like الخطوة1:, الخطوة2:) - Clean
+      .replace(/^(الخطوة\d+|الإجراء\d+|البند\d+|المرحلة\d+|النقطة\d+):\s*(.+)$/gm, '<div style="font-weight: 600; margin: 1rem 0 0.5rem 0; text-align: right; direction: rtl; padding: 0.3rem 0; border-right: 3px solid #ddd; padding-right: 0.8rem;"><strong>$1:</strong> $2</div>')
+      
+      // Legal references and conclusions - ONLY these get green color
+      .replace(/^(الخلاصة|النتيجة|الخلاصة القانونية|التوصية|الحكم|القرار):\s*(.+)$/gm, '<div style="font-weight: 600; margin: 1rem 0; text-align: right; direction: rtl; padding: 1rem; background: #f0fdf4; border-right: 4px solid #006C35; border-radius: 4px;"><strong style="color: #006C35;">$1:</strong> <span style="color: #006C35;">$2</span></div>')
+      
+      // Legal references (like المادة2 من نظام الشركات) - ONLY these get green color
+      .replace(/(المادة\s*\d+|الفقرة\s*\d+|البند\s*\d+|القسم\s*\d+)([^.]*)/g, '<span style="background: #f0fdf4; color: #006C35; padding: 0.2rem 0.4rem; border-radius: 3px; font-weight: 600;">$1$2</span>')
+      
+      // Regular colon-separated definitions - Clean style
+      .replace(/^([^:\n]{1,50}):\s*(.+)$/gm, '<div style="margin: 0.8rem 0; text-align: right; direction: rtl; padding: 0.5rem 0; border-bottom: 1px dotted #ddd;"><strong>$1:</strong> $2</div>')
+      
+      // Numbered sections (like 1. اختيار نوع الشركة:) - Clean
+      .replace(/^(\d+)\.\s+(.+?)[:：]\s*(.*)$/gm, '<div style="font-weight: 600; margin: 1rem 0; text-align: right; direction: rtl; padding: 0.5rem 0;"><span style="font-weight: 700; margin-left: 0.5rem;">$1.</span><strong>$2:</strong> $3</div>')
+      
+      // Simple numbered items (like 1. اختيار نوع الشركة) - Clean
+      .replace(/^(\d+)\.\s+(.+)$/gm, '<div style="margin: 0.8rem 0; text-align: right; direction: rtl; padding: 0.3rem 0;"><span style="font-weight: 700; margin-left: 0.5rem;">$1.</span>$2</div>')
+      
+      // FIXED: Bold text patterns - more specific
+      .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/__([^_\n]+)__/g, '<strong>$1</strong>')
+      
+      // Bullet points with various symbols - Clean
+      .replace(/^[•·]\s+(.+)$/gm, '<li style="margin: 0.3rem 0; text-align: right; direction: rtl; list-style: none; position: relative; padding-right: 1rem;">$1</li>')
+      .replace(/^[-*]\s+(.+)$/gm, '<li style="margin: 0.3rem 0; text-align: right; direction: rtl; list-style: none; position: relative; padding-right: 1rem;">$1</li>')
+      
+      // FIXED: Emphasis patterns - more specific
+      .replace(/\*([^*\n]+)\*/g, '<em style="font-style: italic;">$1</em>')
+      .replace(/_([^_\n]+)_/g, '<em style="font-style: italic;">$1</em>')
+      
+      // Time and cost indicators - Clean
+      .replace(/^(المدة|التكلفة|الرسوم|التوقيت|الفترة):\s*(.+)$/gm, '<div style="margin: 0.5rem 0; text-align: right; direction: rtl; padding: 0.3rem 0; font-size: 0.95em;"><strong>$1:</strong> $2</div>');
+      
+      // FIXED: Split into lines first, then process
+      const lines = formattedContent.split('\n');
+      const processedLines = lines.map(line => {
+        const trimmedLine = line.trim();
+        
+        // Skip lines that are already formatted
+        if (trimmedLine.startsWith('<') || trimmedLine === '') {
+          return line;
+        }
+        
+        // Wrap regular text lines in paragraphs
+        return `<p style="margin: 0.5rem 0; text-align: right; direction: rtl; line-height: 1.6;">${trimmedLine}</p>`;
+      });
+      
+      formattedContent = processedLines.join('\n');
+      
+      // Add bullet points to list items
+      formattedContent = formattedContent
+        .replace(/<li style="margin: 0\.3rem 0; text-align: right; direction: rtl; list-style: none; position: relative; padding-right: 1rem;">([^<]+)<\/li>/g, '<li style="margin: 0.3rem 0; text-align: right; direction: rtl; list-style: none; position: relative; padding-right: 1rem;"><span style="position: absolute; right: 0; font-weight: 700;">•</span>$1</li>')
+        
+        // Wrap consecutive list items in proper ul tags
+        .replace(/(<li[^>]*>.*?<\/li>(?:\s*<li[^>]*>.*?<\/li>)*)/g, '<ul style="margin: 1rem 0; padding: 0;">$1</ul>')
+        
+        // Clean up empty paragraphs and nested elements
+        .replace(/<p[^>]*>\s*<\/p>/g, '')
+        .replace(/<p[^>]*>(\s*<h[1-6][^>]*>)/g, '$1')
+        .replace(/(<\/h[1-6]>\s*)<\/p>/g, '$1')
+        .replace(/<p[^>]*>(\s*<div[^>]*>)/g, '$1')
+        .replace(/(<\/div>\s*)<\/p>/g, '$1')
+        .replace(/<p[^>]*>(\s*<ul[^>]*>)/g, '$1')
+        .replace(/(<\/ul>\s*)<\/p>/g, '$1');
   }
   
   return formattedContent;
+};
+
+// Simple function to ensure formatting is applied consistently
+const ensureConsistentFormatting = (content: string): string => {
+  // Always format the content the same way, regardless of source
+  return formatAIResponse(content);
+};
+
+// Add this to your streaming response handler
+const handleStreamingContent = (chunk: string, fullContent: string) => {
+  // For streaming, format the full content each time
+  return ensureConsistentFormatting(fullContent);
+};
+
+// Add this to your message loading from storage/API
+const handleStoredContent = (content: string) => {
+  // For stored content, ensure it's formatted consistently
+  return ensureConsistentFormatting(content);
 };
 
 // Function to convert markdown-style tables
@@ -2410,16 +2486,17 @@ const handleDeleteCancel = () => {
         console.log('📥 Received response:', { contentLength: response.fullResponse?.length || 0 });
         
         // Update final message with complete data
-        setMessages(prev => prev.map(msg => 
-          msg.id === assistantMessageId 
-            ? { 
-                ...msg, 
+        // This is already correct:
+          setMessages(prev => prev.map(msg =>
+            msg.id === assistantMessageId
+            ? {
+                ...msg,
                 id: response.ai_message?.id || assistantMessageId,
-                content: formatAIResponse(response.ai_message?.content || streamingContent),
+                content: formatAIResponse(response.ai_message?.content || streamingContent), // ← Good!
                 timestamp: response.ai_message?.timestamp || new Date().toISOString()
               }
             : msg
-        ));
+          ));
 
         // 🔄 Handle conversation and user data updates (your existing logic)
         if (response.conversation_id && !selectedConversation) {

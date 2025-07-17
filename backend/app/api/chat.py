@@ -28,6 +28,47 @@ except ImportError as e:
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
+
+# Add these serializer functions after your imports and before the router definition
+
+def _serialize_user_message(user_message) -> Dict[str, Any]:
+    """Convert user message object to serializable dictionary"""
+    return {
+        'id': str(user_message.id),
+        'content': str(user_message.content),
+        'timestamp': user_message.created_at.isoformat() if hasattr(user_message, 'created_at') else datetime.utcnow().isoformat(),
+        'role': 'user'
+    }
+
+def _serialize_ai_message(ai_message) -> Dict[str, Any]:
+    """Convert AI message object to serializable dictionary"""
+    return {
+        'id': str(ai_message.id),
+        'content': str(ai_message.content),
+        'timestamp': ai_message.created_at.isoformat() if hasattr(ai_message, 'created_at') else datetime.utcnow().isoformat(),
+        'role': 'assistant',
+        'processing_time_ms': str(getattr(ai_message, 'processing_time_ms', 0))
+    }
+
+def _serialize_user_data(current_user: Optional[User]) -> Optional[Dict[str, Any]]:
+    """Convert user object to serializable dictionary"""
+    if not current_user:
+        return None
+    
+    return {
+        'id': str(current_user.id),
+        'email': str(current_user.email),
+        'full_name': str(current_user.full_name),
+        'questions_used_current_cycle': int(current_user.questions_used_current_cycle),
+        'cycle_reset_time': current_user.cycle_reset_time.isoformat() if current_user.cycle_reset_time else None,
+        'subscription_tier': str(current_user.subscription_tier),
+        'is_active': bool(current_user.is_active),
+        'is_verified': bool(current_user.is_verified),
+        'questions_remaining': int(_calculate_questions_remaining(current_user))
+    }
+
+router = APIRouter(prefix="/chat", tags=["chat"])
+
 def _calculate_questions_remaining(user: User) -> int:
     """Calculate remaining questions for user based on subscription."""
     if user.subscription_tier == "free":
@@ -254,19 +295,22 @@ async def _generate_streaming_response(
         # 🚀 TRY MULTI-AGENT FOR AUTHENTICATED USERS WITH TRUST TRAIL
         if MULTI_AGENT_AVAILABLE:
             try:
-                if current_user:
-                    print(f"🤖 Using multi-agent streaming for {current_user.email}")
-                else:
-                    print(f"🤖 Using multi-agent streaming for guest")
-                
+                user_identifier = current_user.email if current_user else f"guest_{session_id}"
+                print(f"🤖 Using multi-agent streaming for {user_identifier}")
+                if not current_user:
+                    print(f"🔍 GUEST DEBUG:")
+                    print(f"  session_id: {session_id}")
+                    print(f"  context length: {len(context)}")
+                    print(f"  message_content: {message_content[:50]}...")
                 enhanced_rag = EnhancedRAGEngine()
                 processing_mode = "multi_agent"
-                
+                print(f"🔄 Starting multi-agent processing...")
                 async for chunk in enhanced_rag.ask_question_with_multi_agent(
                     query=message_content,
                     conversation_context=context,
                     enable_trust_trail=enable_trust_trail
                 ):
+                    print(f"🔍 Received chunk: {chunk[:50]}...")  
                     if chunk.startswith("data: "):
                         # Parse metadata chunks
                         try:
@@ -378,49 +422,43 @@ async def _generate_streaming_response(
             })
             
             # Create mock AI message
-            ai_message = type('obj', (object,), {
-                'id': f"guest_ai_{int(datetime.utcnow().timestamp())}",
-                'content': full_response,
-                'created_at': datetime.utcnow(),
-                'processing_time_ms': str(processing_time)
-            })()
-        
-        # ===== ENHANCED COMPLETION METADATA =====
+        ai_message = type('obj', (object,), {
+                    'id': f"guest_ai_{int(datetime.utcnow().timestamp())}",
+                    'content': full_response,
+                    'created_at': datetime.utcnow(),
+                    'processing_time_ms': str(processing_time)
+                })()
+
         completion_data = {
-            'type': 'complete',
-            'id': response_id,
-            'conversation_id': conversation_id,
-            'ai_message': {
-                'id': ai_message.id,
-                'content': full_response,
-                'timestamp': ai_message.created_at.isoformat(),
-                'processing_time_ms': ai_message.processing_time_ms
-            },
-            'updated_user': {
-                'id': current_user.id,
-                'email': current_user.email,
-                'full_name': current_user.full_name,
-                'questions_used_current_cycle': current_user.questions_used_current_cycle,
-                'cycle_reset_time': current_user.cycle_reset_time.isoformat() if current_user.cycle_reset_time else None,
-                'subscription_tier': current_user.subscription_tier,
-                'is_active': current_user.is_active,
-                'is_verified': current_user.is_verified,
-                'questions_remaining': _calculate_questions_remaining(current_user)
-            } if current_user else None,
-            'session_id': session_id if not current_user else None,
-            'user_type': user_type,
-            'processing_time_ms': processing_time,
-            'total_chunks': chunk_count,
-            # 🔥 ENHANCED METADATA
-            'processing_mode': processing_mode,
-            'multi_agent_enabled': processing_mode == "multi_agent",
-            'overall_confidence': multi_agent_metadata.get("overall_confidence", 0.8),
-            'citations_count': len(multi_agent_metadata.get("citations_summary", [])),
-            'citations_summary': multi_agent_metadata.get("citations_summary", []),
-            'reasoning_steps_count': multi_agent_metadata.get("total_steps", 0),
-            'trust_trail_enabled': enable_trust_trail,
-            'fallback_reason': "Multi-agent temporarily unavailable" if processing_mode == "fallback" else None
-        }
+        'type': 'complete',
+        'id': str(response_id),
+        'conversation_id': str(conversation_id) if conversation_id else None,
+        'ai_message': _serialize_ai_message(ai_message),
+        'updated_user': _serialize_user_data(current_user),
+        'session_id': str(session_id) if session_id and not current_user else None,
+        'user_type': str(user_type),
+        'processing_time_ms': int(processing_time),
+        'total_chunks': int(chunk_count),
+        # 🔥 ENHANCED METADATA
+        'processing_mode': str(processing_mode),
+        'multi_agent_enabled': bool(processing_mode == "multi_agent"),
+        'overall_confidence': float(multi_agent_metadata.get("overall_confidence", 0.8)),
+        'citations_count': int(len(multi_agent_metadata.get("citations_summary", []))),
+        'citations_summary': list(multi_agent_metadata.get("citations_summary", [])),
+        'reasoning_steps_count': int(multi_agent_metadata.get("total_steps", 0)),
+        'trust_trail_enabled': bool(enable_trust_trail),
+        'fallback_reason': str(processing_mode) if processing_mode == "fallback" else None
+    }
+            
+
+            
+        try:
+            test_json = json.dumps(completion_data)
+            print("✅ JSON serialization successful")
+        except Exception as e:
+            print(f"❌ JSON error: {e}")
+            print(f"🔍 Problematic data keys: {list(completion_data.keys())}")        
+        # ===== ENHANCED COMPLETION METADATA =====
         
         yield f"data: {json.dumps(completion_data)}\n\n"
         yield "data: [DONE]\n\n"

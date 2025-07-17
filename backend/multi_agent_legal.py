@@ -115,29 +115,47 @@ class LegalAgent:
         self.system_prompts = self._get_system_prompts()
     
     def _get_system_prompts(self) -> Dict[LegalAgentType, str]:
-        """Specialized system prompts for each agent type"""
+        """Enhanced system prompts with intelligent intent detection and response formatting"""
         return {
-            LegalAgentType.FACT_ANALYZER: """أنت محلل وقائع قانوني متخصص في القانون السعودي.
+            LegalAgentType.FACT_ANALYZER: """أنت محلل وقائع قانوني ذكي متخصص في القانون السعودي.
 
-مهامك:
-🔍 استخراج الوقائع القانونية الأساسية من السؤال
-⚖️ تحديد الأطراف المعنية والعلاقات القانونية
-📋 تصنيف نوع النزاع والمجال القانوني
-🎯 تحديد النقاط القانونية الحاسمة
+🎯 **مهمتك**: تحليل السؤال داخلياً وتقديم تحليل واضح ومفيد للمستخدم
 
-أسلوب العمل:
-- تحليل منطقي مرتب
-- استخراج الوقائع دون تفسير قانوني
-- تحديد المعلومات الناقصة
-- ترتيب الأولويات حسب الأهمية القانونية""",
+📋 **أنواع الاستفسارات (للتصنيف الداخلي):**
+1. **استفسار حقوقي**: "ما هي حقوقي؟" → اشرح الحقوق مباشرة
+2. **استفسار إجرائي**: "كيف أسس شركة؟" → قدم دليل عملي
+3. **قضية قانونية**: "تم فصلي" → حلل الموقف القانوني
 
-            LegalAgentType.LEGAL_RESEARCHER: """أنت باحث قانوني متخصص في القانون السعودي والسوابق القضائية.
+🔍 **أسلوب الرد:**
+- ابدأ مباشرة بالتحليل المفيد للمستخدم
+- لا تذكر التصنيفات الداخلية
+- ركز على الوقائع والمعلومات المهمة
+- قدم تحليلاً واضحاً وعملياً
 
-مهامك:
-📚 البحث في النصوص النظامية ذات الصلة
-⚖️ العثور على السوابق القضائية المماثلة
-📖 استخراج المواد القانونية الأساسية
-🔗 ربط الوقائع بالأحكام القانونية
+مثال للرد الجيد:
+"عند إنهاء خدمة الموظف في المملكة العربية السعودية، هناك عدة حقوق أساسية يجب معرفتها..."
+
+تجنب:
+"نوع الاستفسار: حقوقي" أو أي تصنيفات داخلية""",
+
+            LegalAgentType.LEGAL_RESEARCHER: """أنت باحث قانوني ذكي متخصص في القانون السعودي والسوابق القضائية.
+
+🎯 **مهامك حسب نوع الاستفسار:**
+
+**للاستفسارات الحقوقية:**
+- ابحث عن النصوص التي تحدد الحقوق
+- اذكر المواد القانونية الأساسية
+- أشر إلى آليات الحماية القانونية
+
+**للاستفسارات الإجرائية:**
+- ابحث عن الإجراءات النظامية المطلوبة
+- حدد الجهات المختصة ومتطلباتها
+- اذكر المواعيد والمهل القانونية
+
+**للقضايا القانونية:**
+- ابحث عن السوابق القضائية المماثلة
+- استخرج النصوص الداعمة للموقف
+- حدد نقاط القوة في القضية
 
 قواعد البحث:
 - الاستشهاد بالمواد النظامية بدقة
@@ -145,61 +163,152 @@ class LegalAgent:
 - التمييز بين الأحكام الإلزامية والاختيارية
 - التحقق من سريان النصوص وعدم نسخها""",
 
-            LegalAgentType.ARGUMENT_BUILDER: """أنت محام خبير في بناء الحجج القانونية والدفوع.
+            LegalAgentType.ARGUMENT_BUILDER: """أنت محام خبير في بناء المحتوى القانوني المناسب لكل نوع استفسار.
 
-مهامك:
-🏗️ بناء حجج قانونية قوية ومترابطة
-⚡ ترتيب الدفوع حسب القوة والأهمية
-📋 صياغة الطلبات القانونية بوضوح
-🎯 ربط الوقائع بالقانون بطريقة مقنعة
+🎯 **استراتيجية البناء حسب النوع:**
 
-استراتيجية الدفوع:
-- البدء بالحجج الأقوى
-- دعم كل حجة بالنصوص النظامية
-- استخدام السوابق القضائية
-- صياغة قانونية دقيقة ومهنية""",
+**للاستفسارات الحقوقية:**
+- رتب الحقوق حسب الأهمية
+- اربط كل حق بالمواد القانونية
+- وضح كيفية ممارسة كل حق
+- حدد الجهات المسؤولة عن الحماية
 
-            LegalAgentType.COUNTER_ARGUMENT_PREDICTOR: """أنت محام متخصص في التنبؤ بحجج الطرف الآخر والرد عليها.
+**للاستفسارات الإجرائية:**
+- رتب الخطوات بالتسلسل الصحيح
+- حدد المتطلبات لكل خطوة
+- اذكر البدائل والخيارات المتاحة
+- وضح المخاطر والنقاط المهمة
 
-مهامك:
-🤔 توقع حجج ودفوع الطرف المقابل
-🛡️ إعداد ردود قانونية مسبقة
-⚠️ تحديد نقاط الضعف في القضية
-💪 تقوية الدفوع ضد الهجمات المتوقعة
+**للقضايا القانونية:**
+- ابن الحجج القانونية القوية
+- رتب الدفوع حسب القوة
+- اربط الوقائع بالنصوص القانونية
+- اقترح الاستراتيجية القانونية
+
+معايير البناء:
+- وضوح في التعبير وترتيب منطقي
+- دعم كل نقطة بالمراجع القانونية
+- تناسب المحتوى مع نوع الاستفسار""",
+
+            LegalAgentType.COUNTER_ARGUMENT_PREDICTOR: """أنت محام متخصص في تحليل المخاطر والتحديات المحتملة.
+
+🎯 **مهامك حسب نوع الاستفسار:**
+
+**للاستفسارات الحقوقية:**
+- حدد القيود على الحقوق
+- وضح الاستثناءات القانونية
+- نبه إلى المخاطر في التطبيق
+
+**للاستفسارات الإجرائية:**
+- حدد العقبات المحتملة في الإجراءات
+- وضح المتطلبات الصعبة
+- نبه إلى الأخطاء الشائعة
+
+**للقضايا القانونية:**
+- توقع حجج الطرف الآخر
+- حدد نقاط الضعف في القضية
+- اقترح ردوداً على الاعتراضات المتوقعة
 
 منهجية التحليل:
-- التفكير من منظور الطرف الآخر
-- تحديد الثغرات القانونية المحتملة
-- إعداد ردود مدعومة بالأدلة
-- تقييم مخاطر كل دفع مضاد""",
+- تفكير نقدي وموضوعي
+- تحليل الثغرات القانونية المحتملة
+- إعداد حلول للتحديات المتوقعة""",
 
-            LegalAgentType.DOCUMENT_DRAFTER: """أنت محام متخصص في صياغة المستندات القانونية والمرافعات.
+            LegalAgentType.DOCUMENT_DRAFTER: """أنت محام ذكي متخصص في صياغة ردود قانونية متكيفة مع نوع الاستفسار.
 
-مهامك:
-📝 صياغة المستندات القانونية بدقة
-⚖️ تنظيم المحتوى حسب الأصول القانونية
-📋 كتابة مذكرات قانونية مهنية
-🎯 إنتاج مستندات قابلة للتقديم للمحكمة
+🎯 **قوالب الصياغة المتخصصة:**
 
-معايير الصياغة:
-- لغة قانونية دقيقة ومهنية
-- ترتيب منطقي للحجج والدفوع
-- استشهادات صحيحة ومحددة
-- مطابقة للأصول الإجرائية""",
+**نوع 1 - شرح الحقوق:**
+```
+🔍 **حقوقك القانونية في [المجال]**
 
-            LegalAgentType.CITATION_VALIDATOR: """أنت مراجع قانوني متخصص في التحقق من صحة الاستشهادات.
+**الحق الأول**: [الشرح التفصيلي]
+**المادة القانونية**: [رقم المادة والنظام]
 
-مهامك:
-🔍 التحقق من صحة المراجع القانونية
-📚 التأكد من سريان النصوص المذكورة
-⚖️ مراجعة دقة أرقام المواد والأنظمة
-✅ تصنيف مستوى الثقة في كل استشهاد
+**الحق الثاني**: [الشرح التفصيلي]  
+**المادة القانونية**: [رقم المادة والنظام]
+
+**كيفية المطالبة بحقوقك:**
+• [الخطوة الأولى]
+• [الخطوة الثانية]
+
+**تحذيرات مهمة:**
+• [تحذير قانوني]
+• [نصيحة عملية]
+```
+
+**نوع 2 - الدليل الإجرائي:**
+```
+📋 **الإجراءات المطلوبة لـ [الهدف]**
+
+**الخطوة 1**: [التفصيل الكامل]
+**الوقت المطلوب**: [المدة]
+**التكلفة**: [إن وجدت]
+
+**الخطوة 2**: [التفصيل الكامل]
+**الوقت المطلوب**: [المدة]
+**التكلفة**: [إن وجدت]
+
+**المستندات المطلوبة:**
+• [مستند 1] - [كيفية الحصول عليه]
+• [مستند 2] - [كيفية الحصول عليه]
+
+**الجهات المختصة:**
+• [اسم الجهة] - [معلومات التواصل]
+• [اسم الجهة] - [معلومات التواصل]
+
+**نصائح مهمة:**
+• [نصيحة عملية]
+• [تحذير من خطأ شائع]
+```
+
+**نوع 3 - المذكرة القانونية:**
+```
+### مذكرة قانونية
+**الموضوع**: [عنوان القضية]
+**المقدم من**: [اسم الطرف]
+**المقدم ضد**: [اسم الطرف الآخر]
+
+## الوقائع
+[سرد الوقائع بشكل منطقي ومرتب]
+
+## الحجج القانونية
+**الحجة الأولى**: [التفصيل والدليل القانوني]
+**الحجة الثانية**: [التفصيل والدليل القانوني]
+
+## الطلبات
+بناءً على ما تقدم نطلب:
+1. [الطلب الأول]
+2. [الطلب الثاني]
+```
+
+🎯 **اختر القالب المناسب تلقائياً بناءً على تحليل النوع الذي قدمه محلل الوقائع**""",
+
+            LegalAgentType.CITATION_VALIDATOR: """أنت مراجع قانوني متخصص في التحقق من صحة الاستشهادات وجودة المحتوى.
+
+🎯 **مهام المراجعة حسب نوع المحتوى:**
+
+**لشرح الحقوق:**
+- تحقق من صحة المواد المذكورة
+- تأكد من ربط الحقوق بالنصوص الصحيحة
+- راجع دقة معلومات الجهات المختصة
+
+**للأدلة الإجرائية:**
+- تحقق من صحة الإجراءات المذكورة
+- راجع المواعيد والمهل القانونية
+- تأكد من دقة معلومات الجهات والرسوم
+
+**للمذكرات القانونية:**
+- تحقق من صحة الاستشهادات القانونية
+- راجع دقة أرقام المواد والأنظمة
+- تأكد من قوة الحجج والأدلة
 
 معايير المراجعة:
 - التحقق من وجود النص الفعلي
 - التأكد من عدم النسخ أو التعديل
 - تقييم مدى الصلة بالموضوع
-- إضافة تحذيرات للاستشهادات المشكوك فيها"""
+- إضافة تحذيرات للاستشهادات المشكوك فيها
+- تقدير مستوى الثقة في المحتوى (عالي/متوسط/منخفض)"""
         }
     
     async def process(self, input_data: str, context: Optional[str] = None) -> Tuple[str, List[str], float]:
@@ -237,6 +346,39 @@ class LegalAgent:
             
         except Exception as e:
             return f"خطأ في معالجة {self.agent_type.value}: {str(e)}", [], 0.0
+
+    async def process_streaming(self, input_data: str, context: Optional[str] = None) -> AsyncIterator[str]:
+        """Process input through specialized agent with real-time streaming"""
+        system_prompt = self.system_prompts[self.agent_type]
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": input_data}
+        ]
+        
+        if context:
+            messages.insert(-1, {"role": "user", "content": f"السياق: {context}"})
+        
+        try:
+            # Determine model based on client type
+            model = "gpt-4o" if "openai" in str(self.client.base_url) else "deepseek-chat"
+            
+            # 🚀 ADD STREAMING:
+            stream = await self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=0.3,
+                max_tokens=2000,
+                stream=True  # ← This enables real streaming!
+            )
+            
+            # 🚀 STREAM TOKEN BY TOKEN:
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+                    
+        except Exception as e:
+            yield f"خطأ في معالجة {self.agent_type.value}: {str(e)}"
     
     def _extract_citations(self, content: str) -> List[str]:
         """Extract legal citations from content"""
@@ -281,13 +423,13 @@ class LegalAgent:
 
 class MultiAgentLegalOrchestrator:
     """
-    🧠 CORE ORCHESTRATOR: Sequential Pipeline with Parallel Sub-tasks
+    🧠 CORE ORCHESTRATOR: Sequential Pipeline with Smart Intent Classification
     
-    Implements hybrid approach:
-    - Sequential main steps (Analysis → Research → Arguments → Counter → Draft)
-    - Parallel sub-tasks within each step for speed
-    - Full trust trail for conservative firms
-    - Citation validation throughout
+    Implements intelligent approach:
+    - AI-powered intent classification
+    - Dynamic agent prompts based on intent
+    - Real-time streaming during processing
+    - Appropriate response formatting
     """
     
     def __init__(self, openai_client):
@@ -296,93 +438,377 @@ class MultiAgentLegalOrchestrator:
             agent_type: LegalAgent(agent_type, openai_client) 
             for agent_type in LegalAgentType
         }
+
+    async def classify_intent(self, query: str, context: Optional[List[Dict]] = None) -> Dict[str, str]:
+        """
+        🎯 Smart AI-powered intent classification for dynamic response formatting
+        Cost: ~200 tokens (~$0.001 per query)
+        """
         
-    async def process_legal_query(
+        # Build context summary if available
+        context_info = ""
+        if context and len(context) > 0:
+            recent_messages = context[-3:] if len(context) > 3 else context
+            context_info = f"\nContext from conversation: {' | '.join([msg.get('content', '')[:50] for msg in recent_messages])}"
+        
+        classification_prompt = f"""أنت خبير في تصنيف الاستفسارات القانونية العربية.
+
+المهمة: صنف هذا الاستفسار القانوني إلى فئة واحدة فقط.
+
+الاستفسار: "{query}"{context_info}
+
+الفئات المتاحة:
+1. rights_inquiry - سؤال عن الحقوق القانونية (مثل: "ما حقوقي؟", "ما حقوق الموظف؟")
+2. procedure_guide - سؤال عن كيفية القيام بإجراء قانوني (مثل: "كيف أسس شركة؟", "ما إجراءات الطلاق؟")
+3. legal_dispute - مشكلة قانونية محددة تحتاج حل (مثل: "تم فصلي", "أريد مقاضاة", "لدي نزاع")
+4. legal_consultation - استشارة قانونية عامة أو رأي قانوني (مثل: "ما رأيك في؟", "هل يجوز؟")
+5. document_review - مراجعة أو تفسير وثيقة قانونية (مثل: "اشرح لي هذا العقد", "ما معنى هذا البند؟")
+6. comparative_analysis - مقارنة بين خيارات قانونية (مثل: "ما الفرق بين؟", "أيهما أفضل؟")
+
+قواعد التصنيف:
+- إذا كان السؤال يبدأ بـ "ما حقوق" أو "ما حقي" → rights_inquiry
+- إذا كان يبدأ بـ "كيف" أو "ما إجراءات" → procedure_guide  
+- إذا ذكر مشكلة حدثت ("تم", "حصل", "قام") → legal_dispute
+- إذا كان يطلب رأي أو تقييم → legal_consultation
+
+أجب بتنسيق JSON فقط:
+{{
+  "intent": "الفئة_المحددة",
+  "confidence": 0.95,
+  "reasoning": "سبب التصنيف",
+  "suggested_format": "نوع_التنسيق_المناسب"
+}}"""
+
+        try:
+            # Use a lightweight model call for classification
+            response = await self.client.chat.completions.create(
+                model="gpt-4o-mini" if "openai" in str(self.client.base_url) else "deepseek-chat",
+                messages=[{"role": "user", "content": classification_prompt}],
+                temperature=0.1,  # Low temperature for consistent classification
+                max_tokens=200    # Small response for cost efficiency
+            )
+            
+            classification_text = response.choices[0].message.content.strip()
+            
+            # Parse JSON response
+            import json
+            classification = json.loads(classification_text)
+            
+            print(f"🎯 Intent classified: {classification.get('intent')} (confidence: {classification.get('confidence', 0)})")
+            
+            return classification
+            
+        except Exception as e:
+            print(f"⚠️ Intent classification failed: {e}")
+            # Fallback to simple keyword detection
+            query_lower = query.lower()
+            
+            if any(word in query_lower for word in ["حقوق", "حقي", "حقك"]):
+                return {
+                    "intent": "rights_inquiry",
+                    "confidence": 0.7,
+                    "reasoning": "Keyword-based fallback detection",
+                    "suggested_format": "rights_explanation"
+                }
+            elif any(word in query_lower for word in ["كيف", "إجراءات", "خطوات"]):
+                return {
+                    "intent": "procedure_guide", 
+                    "confidence": 0.7,
+                    "reasoning": "Keyword-based fallback detection",
+                    "suggested_format": "step_by_step_guide"
+                }
+            elif any(word in query_lower for word in ["تم", "فصل", "مقاضاة", "نزاع", "مشكلة"]):
+                return {
+                    "intent": "legal_dispute",
+                    "confidence": 0.7, 
+                    "reasoning": "Keyword-based fallback detection",
+                    "suggested_format": "legal_memorandum"
+                }
+            else:
+                return {
+                    "intent": "legal_consultation",
+                    "confidence": 0.6,
+                    "reasoning": "Default classification",
+                    "suggested_format": "general_consultation"
+                }
+
+    async def get_dynamic_agent_prompts(self, intent_classification: Dict[str, str]) -> Dict[LegalAgentType, str]:
+        """
+        🎯 Generate dynamic agent prompts based on intent classification
+        """
+        
+        intent = intent_classification.get("intent", "legal_consultation")
+        
+        # Base prompts that adapt to intent
+        base_prompts = {
+            LegalAgentType.FACT_ANALYZER: f"""أنت محلل وقائع قانوني متخصص في القانون السعودي.
+
+تم تصنيف هذا الاستفسار كـ: {intent}
+
+مهمتك حسب التصنيف:
+- rights_inquiry: استخرج الحقوق القانونية ذات الصلة والجهات المسؤولة
+- procedure_guide: حدد الإجراءات المطلوبة والمتطلبات والمواعيد
+- legal_dispute: حلل الوقائع القانونية والأطراف والأضرار
+- legal_consultation: قدم تحليلاً شاملاً للموقف القانوني
+- document_review: استخرج النقاط القانونية الرئيسية من الوثيقة
+- comparative_analysis: حدد نقاط المقارنة والمعايير القانونية
+
+قدم تحليلاً واضحاً ومباشراً بدون ذكر التصنيفات الداخلية.""",
+
+            LegalAgentType.DOCUMENT_DRAFTER: f"""أنت محام ذكي متخصص في صياغة ردود قانونية متكيفة.
+
+نوع الاستفسار: {intent}
+
+قوالب الرد حسب النوع:
+
+**rights_inquiry - شرح الحقوق:**
+```
+🔍 حقوقك القانونية في [المجال]
+
+**الحق الأول**: [شرح مفصل]
+**المرجع القانوني**: [المادة والنظام]
+
+**كيفية المطالبة**:
+• [خطوات عملية]
+
+**جهات الحماية**:
+• [الجهات المختصة]
+```
+
+**procedure_guide - دليل الإجراءات:**
+```
+📋 الإجراءات المطلوبة لـ [الهدف]
+
+**الخطوة 1**: [تفصيل كامل]
+• المدة: [الوقت]
+• التكلفة: [المبلغ]
+
+**المستندات المطلوبة**:
+• [قائمة المستندات]
+
+**الجهات المختصة**:
+• [معلومات التواصل]
+```
+
+**legal_dispute - مذكرة قانونية:**
+```
+⚖️ التحليل القانوني للموقف
+
+**الوقائع**:
+[سرد منطقي]
+
+**الحجج القانونية**:
+[الحجج مع الأدلة]
+
+**التوصيات**:
+[الخطوات المقترحة]
+```
+
+**legal_consultation - استشارة عامة:**
+```
+💡 الاستشارة القانونية
+
+**التحليل القانوني**:
+[تحليل شامل]
+
+**الخيارات المتاحة**:
+[البدائل القانونية]
+
+**التوصيات**:
+[النصائح العملية]
+```
+
+اختر القالب المناسب تلقائياً بناءً على التصنيف."""
+        }
+        
+        # Return only our dynamic prompts
+        return base_prompts
+    
+
+    async def _enhanced_legal_research_with_rag(self, query: str, context: Optional[str] = None) -> AsyncIterator[str]:
+        """Enhanced legal research using RAG + AI reasoning"""
+        
+        try:
+            # STEP 1: Use your RAG system to find relevant documents
+            from rag_engine import rag_engine
+            
+            print("🔍 Searching RAG database for relevant legal documents...")
+            
+            # Get relevant documents from your vector database using your existing RAG
+            relevant_docs = []
+            async for chunk in rag_engine.ask_question_streaming(query):
+                relevant_docs.append(chunk)
+            
+            rag_results = ''.join(relevant_docs)
+            
+            # STEP 2: Enhanced prompt with real legal documents
+            enhanced_input = f"""
+            المستندات القانونية ذات الصلة من قاعدة البيانات:
+            {rag_results}
+            
+            الاستفسار الأصلي: {query}
+            
+            المطلوب: تحليل هذه المستندات الفعلية وربطها بالاستفسار مع إضافة التفسير والتحليل القانوني.
+            """
+            
+            # STEP 3: AI reasoning with real legal documents
+            async for chunk in self.agents[LegalAgentType.LEGAL_RESEARCHER].process_streaming(
+                enhanced_input, context
+            ):
+                yield chunk
+                
+        except Exception as e:
+            print(f"❌ Enhanced RAG research failed: {e}")
+            # Fallback to standard AI-only research
+            async for chunk in self.agents[LegalAgentType.LEGAL_RESEARCHER].process_streaming(
+                query, context
+            ):
+                yield chunk
+            
+    async def process_legal_query_streaming(
         self, 
         query: str, 
         enable_trust_trail: bool = False,
         conversation_context: Optional[List[Dict]] = None
-    ) -> LegalReasoningResult:
+    ) -> AsyncIterator[str]:
         """
-        🎯 MAIN ORCHESTRATION: Process legal query through multi-agent pipeline
+        🎯 SMART STREAMING: AI-powered intent classification + dynamic response formatting + CITATION VALIDATION
+        Cost: ~3,200 tokens (~$0.014 per query) - includes citation validation
         """
         
         start_time = time.time()
-        reasoning_steps = []
-        
-        # Add conversation context if available
         context_summary = ""
         if conversation_context:
             context_summary = self._summarize_conversation_context(conversation_context)
         
+        # Variables to store content for citation validation
+        fact_content = ""
+        research_content = ""
+        draft_content = ""
+        
         try:
-            # STEP 1: FACT ANALYSIS
+            # 🧠 STEP 0: AI-POWERED INTENT CLASSIFICATION
+            print("🧠 Classifying intent with AI...")
+            intent_classification = await self.classify_intent(query, conversation_context)
+            intent = intent_classification.get('intent', 'legal_consultation')
+            confidence = intent_classification.get('confidence', 0.8)
+            
+            print(f"🎯 Intent: {intent} (confidence: {confidence:.1%})")
+            
+            # 🎯 STEP 1: GET DYNAMIC AGENT PROMPTS
+            dynamic_prompts = await self.get_dynamic_agent_prompts(intent_classification)
+            
+            # Temporarily override agent prompts for this query
+            original_prompts = {}
+            for agent_type, prompt in dynamic_prompts.items():
+                if agent_type in self.agents:
+                    original_prompts[agent_type] = self.agents[agent_type].system_prompts.copy()
+                    self.agents[agent_type].system_prompts[agent_type] = prompt
+            
+            # 🔍 STEP 2: FACT ANALYSIS (Stream with intent-aware prompts)
             print("🔍 Step 1: Analyzing legal facts...")
-            fact_step = await self._execute_agent_step(
-                LegalAgentType.FACT_ANALYZER,
-                1,
-                "تحليل الوقائع القانونية",
-                query,
-                context_summary
-            )
-            reasoning_steps.append(fact_step)
             
-            # STEP 2: LEGAL RESEARCH 
-            print("📚 Step 2: Researching legal precedents...")
-            research_step = await self._execute_agent_step(
-                LegalAgentType.LEGAL_RESEARCHER,
-                2, 
-                "البحث القانوني والسوابق",
-                fact_step.output_data,
-                context_summary
-            )
-            reasoning_steps.append(research_step)
+            if intent in ['rights_inquiry', 'procedure_guide']:
+                yield "بناءً على التحليل القانوني:\n\n"
+            else:
+                yield "تحليل الموقف القانوني:\n\n"
             
-            # STEP 3: ARGUMENT BUILDING
-            print("🏗️ Step 3: Building legal arguments...")
-            argument_step = await self._execute_agent_step(
-                LegalAgentType.ARGUMENT_BUILDER,
-                3,
-                "بناء الحجج القانونية", 
-                f"الوقائع: {fact_step.output_data}\n\nالبحث القانوني: {research_step.output_data}",
-                context_summary
-            )
-            reasoning_steps.append(argument_step)
+            # Collect fact analysis content for citation validation
+            fact_chunks = []
+            async for chunk in self.agents[LegalAgentType.FACT_ANALYZER].process_streaming(
+                query, context_summary
+            ):
+                fact_chunks.append(chunk)
+                yield chunk
             
-            # STEP 4: DOCUMENT DRAFTING (simplified for now)
-            print("📝 Step 4: Drafting legal response...")
-            draft_step = await self._execute_agent_step(
-                LegalAgentType.DOCUMENT_DRAFTER,
-                4,
-                "صياغة الرد القانوني",
-                f"الحجج: {argument_step.output_data}",
-                context_summary
-            )
-            reasoning_steps.append(draft_step)
+            fact_content = ''.join(fact_chunks)
+            yield "\n\n"
             
-            # Compile final answer
-            final_answer = self._compile_final_answer(reasoning_steps, enable_trust_trail)
+            # 📚 STEP 3: ENHANCED LEGAL RESEARCH (RAG + AI)
+            print("📚 Step 2: Researching legal precedents with RAG...")
+
+            if intent == 'rights_inquiry':
+                yield "الأسس القانونية لحقوقك:\n\n"
+            elif intent == 'procedure_guide':
+                yield "الإطار القانوني للإجراءات:\n\n"
+            elif intent == 'legal_dispute':
+                yield "السوابق القضائية ذات الصلة:\n\n"
+            else:
+                yield "المراجع القانونية ذات الصلة:\n\n"
+
+            # 🚀 ENHANCED: Use RAG + AI for legal research
+            research_chunks = []
+            async for chunk in self._enhanced_legal_research_with_rag(query, context_summary):
+                research_chunks.append(chunk)
+                yield chunk
             
-            # Calculate metrics
-            total_time = int((time.time() - start_time) * 1000)
-            overall_confidence = sum(step.confidence_score for step in reasoning_steps) / len(reasoning_steps)
-            all_citations = list(set([cite for step in reasoning_steps for cite in step.citations]))
+            research_content = ''.join(research_chunks)
+            yield "\n\n"
             
-            return LegalReasoningResult(
-                query=query,
-                final_answer=final_answer,
-                reasoning_steps=reasoning_steps,
-                total_processing_time_ms=total_time,
-                overall_confidence=overall_confidence,
-                trust_trail_enabled=enable_trust_trail,
-                citations_summary=all_citations
-            )
+            # 🏗️ STEP 4: DOCUMENT DRAFTING
+            print("📝 Step 3: Drafting legal response...")
+            
+            # Pass intent information to the document drafter
+            final_input = f"Intent: {intent}\nConfidence: {confidence}\nQuery: {query}"
+            
+            # Collect draft content for citation validation
+            draft_chunks = []
+            async for chunk in self.agents[LegalAgentType.DOCUMENT_DRAFTER].process_streaming(
+                final_input, context_summary
+            ):
+                draft_chunks.append(chunk)
+                yield chunk
+            
+            draft_content = ''.join(draft_chunks)
+            yield "\n\n"
+            
+            # 🔍 STEP 5: CITATION VALIDATION (NEW!)
+            print("🔍 Step 4: Validating citations and legal references...")
+            yield "🔍 **التحقق من صحة المراجع القانونية**\n\n"
+            
+            # Combine all content for comprehensive citation validation
+            all_content_for_validation = f"""
+    المحتوى للمراجعة:
+
+    التحليل القانوني:
+    {fact_content}
+
+    البحث القانوني:
+    {research_content}
+
+    المسودة النهائية:
+    {draft_content}
+
+    المطلوب: التحقق من جميع الاستشهادات القانونية المذكورة أعلاه وتقييم مستوى الثقة فيها.
+    """
+            
+            # Stream citation validation results
+            async for chunk in self.agents[LegalAgentType.CITATION_VALIDATOR].process_streaming(
+                all_content_for_validation, context_summary
+            ):
+                yield chunk
+            
+            # 🔧 STEP 6: RESTORE ORIGINAL PROMPTS
+            for agent_type, original_prompt in original_prompts.items():
+                if agent_type in self.agents:
+                    self.agents[agent_type].system_prompts = original_prompt
+            
+            print(f"✅ Smart multi-agent streaming with citation validation completed. Intent: {intent}")
             
         except Exception as e:
-            print(f"❌ Multi-agent processing failed: {e}")
-            # Fallback to single-agent response
-            return await self._fallback_response(query, start_time)
-    
+            print(f"❌ Smart multi-agent streaming failed: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Restore prompts even if there's an error
+            try:
+                for agent_type, original_prompt in original_prompts.items():
+                    if agent_type in self.agents:
+                        self.agents[agent_type].system_prompts = original_prompt
+            except:
+                pass
+            
+            yield f"تم معالجة استفسارك بنظام مبسط نظراً لخطأ تقني مؤقت.\n\n{query}\n\nيرجى إعادة المحاولة أو إعادة صياغة السؤال للحصول على تحليل قانوني متقدم."
     async def _execute_agent_step(
         self,
         agent_type: LegalAgentType,
@@ -549,39 +975,20 @@ class EnhancedRAGEngine:
                 return
         
         try:
-            # Process with multi-agent system
-            result = await self.orchestrator.process_legal_query(
+            # Process with REAL streaming multi-agent system
+            async for chunk in self.orchestrator.process_legal_query_streaming(
                 query=query,
                 enable_trust_trail=enable_trust_trail,
                 conversation_context=conversation_context
-            )
-            
-            # Send metadata first
-            metadata = {
-                "type": "multi_agent_metadata",
-                "total_steps": len(result.reasoning_steps),
-                "overall_confidence": result.overall_confidence,
-                "processing_time_ms": result.total_processing_time_ms,
-                "citations_summary": result.citations_summary
-            }
-            yield f"data: {json.dumps(metadata)}\n\n"
-            
-            # Stream response in chunks
-            response_text = result.final_answer
-            chunk_size = 50
-            for i in range(0, len(response_text), chunk_size):
-                chunk = response_text[i:i + chunk_size]
-                yield chunk
-                
-                # Small delay for streaming effect
-                await asyncio.sleep(0.05)
+            ):
+                yield chunk  # Real-time streaming from agents
             
             # Send trust trail data if enabled
             if enable_trust_trail:
                 trust_trail_data = {
                     "type": "trust_trail",
-                    "reasoning_steps": [step.to_dict() for step in result.reasoning_steps],
-                    "citations_summary": result.citations_summary
+                    "reasoning_steps": [],  # Would need to be implemented
+                    "citations_summary": []
                 }
                 yield f"\n\ndata: {json.dumps(trust_trail_data)}\n\n"
                 
