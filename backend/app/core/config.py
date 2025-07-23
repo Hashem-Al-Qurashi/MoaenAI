@@ -193,7 +193,6 @@ class Settings(BaseSettings):
         return self
         
     # ==================== HELPER PROPERTIES ====================
-    
     @property
     def allowed_origins(self) -> List[str]:
         """Get CORS origins from environment or use defaults"""
@@ -207,14 +206,28 @@ class Settings(BaseSettings):
                 "http://localhost:3000",
                 "http://127.0.0.1:3000",
                 "http://localhost:5173",  # Vite dev server
+                "https://*.ngrok.io",
+                # Local network access for mobile testing
+                "http://192.168.1.10:3000",      # Your specific local IP
+                "http://192.168.1.*:3000",       # Your network range (if supported)
+                "http://10.0.3.1:3000",          # Your virtual interface
+                "http://172.18.0.1:3000",        # Docker bridge
+                "http://172.17.0.1:3000",        # Docker bridge
             ]
         elif self.environment == Environment.STAGING:
             return [
                 "https://staging.yourdomain.com",
-                "http://localhost:3000"  # Allow local testing
+                "http://localhost:3000",  # Allow local testing
+                "https://*.ngrok.io",
+                # Add local network for staging testing if needed
+                "http://192.168.1.10:3000",
             ]
         else:  # Production
-            return []  # Must be explicitly configured in production
+            # For production, require explicit configuration but provide CloudFront fallback
+            return [
+                "https://d10drat4g0606g.cloudfront.net",
+                "https://d2c979d13bkvf4.cloudfront.net"
+            ]
     
     @property
     def is_postgresql(self) -> bool:

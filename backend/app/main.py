@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime
 import os
-
+from app.models import User, Consultation, Conversation, Message
 # Import routers
 from app.api.simple_auth import router as auth_router
 from app.api.chat import router as chat_router
@@ -17,15 +17,11 @@ from app.api.export import router as export_router
 
 # Initialize database tables
 from app.database import engine, Base
+from app.core.config import settings
 Base.metadata.create_all(bind=engine)
 print("✅ Database tables created!")
 
-def get_cors_origins():
-    """Get CORS origins from environment or use defaults"""
-    cors_origins = os.getenv("CORS_ORIGINS")
-    if cors_origins:
-        return [origin.strip() for origin in cors_origins.split(",")]
-    return ["http://localhost:3000", "http://127.0.0.1:3000"]
+
 
 # Create FastAPI application
 app = FastAPI(
@@ -47,13 +43,13 @@ app = FastAPI(
 # In your main.py, make sure you have:
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Add your frontend URL
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-print(f"🌐 CORS Origins configured: {get_cors_origins()}")
+print(f"🌐 CORS Origins configured: {settings.allowed_origins}")
 
 # Global OPTIONS handler for CORS preflight
 @app.options("/{full_path:path}")
@@ -129,7 +125,7 @@ async def root():
             "tech_debt": "Zero - Single codebase",
             "memory_system": "Context-aware for all user types"
         },
-        "cors_origins": get_cors_origins(),
+        "cors_origins": settings.allowed_origins,
         "environment": os.getenv("ENVIRONMENT", "development"),
         "timestamp": datetime.now().isoformat()
     }
@@ -159,6 +155,6 @@ async def health_check():
 
 print("🚀 Arabic Legal Assistant Unified Edition started!")
 print("✅ Features: Unified Chat + Guest Sessions + Context Memory + Zero Tech Debt")
-print(f"🌐 CORS configured for: {get_cors_origins()}")
+print(f"🌐 CORS configured for: {settings.allowed_origins}")
 print("🔥 Legacy APIs removed - Single chat system for all users!")
 print("📊 Architecture: Zero tech debt, maximum maintainability")

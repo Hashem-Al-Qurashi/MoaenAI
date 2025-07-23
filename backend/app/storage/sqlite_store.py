@@ -97,8 +97,8 @@ class SqliteVectorStore(VectorStore):
         try:
             async with aiosqlite.connect(self.db_path) as db:
                 for chunk in chunks:
-                    # Serialize embedding as binary (proper BLOB storage)
-                    embedding_blob = np.array(chunk.embedding).tobytes() if chunk.embedding is not None else None
+                    # Serialize embedding as JSON (more portable than BLOB)
+                    embedding_json = json.dumps(chunk.embedding) if chunk.embedding else None
                     metadata_json = json.dumps(chunk.metadata) if chunk.metadata else "{}"
                     
                     # Use INSERT OR REPLACE for upsert behavior
@@ -110,7 +110,7 @@ class SqliteVectorStore(VectorStore):
                         chunk.id,
                         chunk.content,
                         chunk.title,
-                        embedding_blob,
+                        embedding_json,
                         metadata_json
                     ))
                 
@@ -158,26 +158,17 @@ class SqliteVectorStore(VectorStore):
                 query_vector_np = np.array(query_vector)
                 
                 for row in rows:
-                    chunk_id, content, title, embedding_blob, metadata_json = row
+                    chunk_id, content, title, embedding_json, metadata_json = row
                     
                     # Parse embedding
                     try:
-                        # Parse embedding (handle both JSON and binary)
-                        # Parse embedding (handle both JSON and binary)
-                        chunk_embedding = None
-                        if embedding_blob:
-                            if isinstance(embedding_blob, str):
-                                # Old JSON format
-                                chunk_embedding = json.loads(embedding_blob)
-                            else:
-                                # New binary format
-                                chunk_embedding = np.frombuffer(embedding_blob, dtype=np.float32).tolist()
-                        
-                        if not chunk_embedding or len(chunk_embedding) != 1536:
+                        chunk_embedding = json.loads(embedding_json) if embedding_json else None
+                        if not chunk_embedding:
                             continue
+                            
+                        chunk_embedding_np = np.array(chunk_embedding)
                         
                         # Calculate cosine similarity
-                        chunk_embedding_np = np.array(chunk_embedding)
                         similarity = self._cosine_similarity(query_vector_np, chunk_embedding_np)
                         
                         # Parse metadata
@@ -227,10 +218,10 @@ class SqliteVectorStore(VectorStore):
                 if not row:
                     return None
                 
-                chunk_id, content, title, embedding_blob, metadata_json = row
+                chunk_id, content, title, embedding_json, metadata_json = row
                 
                 # Parse embedding and metadata
-                embedding = json.loads(embedding_blob) if embedding_blob else None
+                embedding = json.loads(embedding_json) if embedding_json else None
                 metadata = json.loads(metadata_json) if metadata_json else {}
                 
                 return Chunk(
@@ -397,335 +388,3 @@ class SqliteVectorStore(VectorStore):
         except Exception as e:
             logger.error(f"Failed to get chunks without embeddings: {e}")
             return []
-    async def search_hybrid(
-        self,
-        query_text: str,
-        top_k: int = 5,
-        semantic_weight: float = 0.7,
-        keyword_weight: float = 0.3
-    ) -> List[SearchResult]:
-        """Hybrid search combining semantic + keyword search for Arabic legal content"""
-        
-        # Extract Arabic legal keywords
-        legal_keywords = self._extract_legal_keywords(query_text)
-        
-        # Get embedding for semantic search
-        from openai import AsyncOpenAI
-        import os
-        from dotenv import load_dotenv
-        load_dotenv()
-        
-        client = AsyncOpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        response = await client.embeddings.create(
-            model='text-embedding-ada-002',
-            input=query_text
-        )
-        query_embedding = response.data[0].embedding
-        
-        # Perform semantic search
-        semantic_results = await self.search_similar(query_embedding, top_k=top_k*2)
-        
-        # Perform keyword search
-        keyword_results = await self._search_keywords(legal_keywords, top_k=top_k*2)
-        
-        # Fuse results with smart ranking
-        fused_results = self._fuse_search_results(
-            semantic_results, keyword_results, 
-            semantic_weight, keyword_weight
-        )
-        
-        return fused_results[:top_k]
-    
-    def _extract_legal_keywords(self, query_text: str) -> List[str]:
-        """Extract Arabic legal terms and concepts"""
-        
-        # Arabic legal term patterns
-        legal_patterns = {
-            'articles': r'المادة\s*[الأولى|الثانية|الثالثة|الرابعة|الخامسة|السادسة|السابعة|الثامنة|التاسعة|العاشرة|\d+]',
-            'chapters': r'الباب\s*[الأول|الثاني|الثالث|الرابعة|الخامس|السادس|السابع|الثامن|التاسع|العاشر|\d+]',
-            'sections': r'الفصل\s*[الأول|الثاني|الثالث|الرابع|الخامس|السادس|السابع|الثامن|التاسع|العاشر|\d+]',
-            'paragraphs': r'\d+/\d+',  # Like ١/٩
-        }
-        
-        # Legal domain keywords
-        legal_keywords = [
-            'السجين', 'الموقوف', 'المتهم', 'المدعي', 'المدعى', 'الشاهد',
-            'الحكم', 'القاضي', 'المحكمة', 'الدعوى', 'الجلسة', 'التبليغ',
-            'العقوبة', 'الغرامة', 'السجن', 'التوقيف', 'الإفراج',
-            'العمل', 'العامل', 'الموظف', 'الوظيفة', 'الراتب', 'الأجر',
-            'الإجازة', 'ساعات', 'العمل', 'صاحب', 'رب', 'العمل'
-        ]
-        
-        extracted = []
-        
-        # Extract structured references (articles, chapters, etc.)
-        import re
-        for pattern_type, pattern in legal_patterns.items():
-            matches = re.findall(pattern, query_text)
-            extracted.extend(matches)
-        
-        # Extract legal keywords
-        query_words = query_text.split()
-        for word in query_words:
-            clean_word = word.strip('،.؟!()[]{}')
-            if clean_word in legal_keywords:
-                extracted.append(clean_word)
-            # Add root forms and variations
-            if 'سجن' in clean_word:
-                extracted.extend(['السجين', 'المسجون', 'سجن'])
-            if 'عمل' in clean_word:
-                extracted.extend(['العامل', 'العمل', 'الموظف', 'الوظيفة'])
-            if 'حضور' in clean_word:
-                extracted.extend(['حضور', 'الحضور', 'يحضر'])
-        
-        return list(set(extracted))  # Remove duplicates
-    
-    async def _search_keywords(self, keywords: List[str], top_k: int = 10) -> List[SearchResult]:
-        """Search for chunks containing specific Arabic keywords"""
-        if not keywords:
-            return []
-        
-        try:
-            async with aiosqlite.connect(self.db_path) as db:
-                # Build SQL query for keyword matching
-                keyword_conditions = []
-                params = []
-                
-                for keyword in keywords:
-                    keyword_conditions.append("(content LIKE ? OR title LIKE ?)")
-                    params.extend([f'%{keyword}%', f'%{keyword}%'])
-                
-                query = f"""
-                    SELECT id, content, title, embedding, metadata,
-                           ({' + '.join(['(CASE WHEN content LIKE ? OR title LIKE ? THEN 1 ELSE 0 END)' for _ in keywords])}) as keyword_score
-                    FROM chunks 
-                    WHERE {' OR '.join(keyword_conditions)}
-                    ORDER BY keyword_score DESC, length(content) ASC
-                """
-                
-                # Duplicate params for scoring
-                score_params = []
-                for keyword in keywords:
-                    score_params.extend([f'%{keyword}%', f'%{keyword}%'])
-                
-                all_params = score_params + params
-                
-                async with db.execute(query, all_params) as cursor:
-                    rows = await cursor.fetchall()
-                
-                results = []
-                for row in rows[:top_k]:
-                    chunk_id, content, title, embedding_blob, metadata_json, keyword_score = row
-                    
-                    # Parse metadata
-                    metadata = json.loads(metadata_json) if metadata_json else {}
-                    
-                    # Parse embedding  
-                    embedding = None
-                    if embedding_blob:
-                        if isinstance(embedding_blob, str):
-                            embedding = json.loads(embedding_blob)
-                        else:
-                            embedding = np.frombuffer(embedding_blob, dtype=np.float32).tolist()
-                    
-                    # Create chunk
-                    chunk = Chunk(
-                        id=chunk_id,
-                        content=content,
-                        title=title,
-                        embedding=embedding,
-                        metadata=metadata
-                    )
-                    
-                    # Keyword score as similarity (0-1 range)
-                    similarity_score = min(keyword_score / len(keywords), 1.0)
-                    
-                    results.append(SearchResult(
-                        chunk=chunk,
-                        similarity_score=similarity_score
-                    ))
-                
-                return results
-                
-        except Exception as e:
-            logger.error(f"Keyword search failed: {e}")
-            return []
-    
-    def _fuse_search_results(
-        self, 
-        semantic_results: List[SearchResult], 
-        keyword_results: List[SearchResult],
-        semantic_weight: float,
-        keyword_weight: float
-    ) -> List[SearchResult]:
-        """Intelligently fuse semantic and keyword search results"""
-        
-        # Create a map of all unique chunks
-        chunk_scores = {}
-        
-        # Add semantic results
-        for result in semantic_results:
-            chunk_id = result.chunk.id
-            chunk_scores[chunk_id] = {
-                'chunk': result.chunk,
-                'semantic_score': result.similarity_score,
-                'keyword_score': 0.0
-            }
-        
-        # Add keyword results
-        for result in keyword_results:
-            chunk_id = result.chunk.id
-            if chunk_id in chunk_scores:
-                chunk_scores[chunk_id]['keyword_score'] = result.similarity_score
-            else:
-                chunk_scores[chunk_id] = {
-                    'chunk': result.chunk,
-                    'semantic_score': 0.0,
-                    'keyword_score': result.similarity_score
-                }
-        
-        # Calculate final scores
-        final_results = []
-        for chunk_id, scores in chunk_scores.items():
-            final_score = (
-                scores['semantic_score'] * semantic_weight + 
-                scores['keyword_score'] * keyword_weight
-            )
-            
-            final_results.append(SearchResult(
-                chunk=scores['chunk'],
-                similarity_score=final_score
-            ))
-        
-        # Sort by final score
-        final_results.sort(key=lambda x: x.similarity_score, reverse=True)
-        
-        return final_results
-
-    async def search_elite(
-        self,
-        query_text: str,
-        top_k: int = 5,
-        prefer_legislation: bool = True
-    ) -> List[SearchResult]:
-        """Elite search with legislation vs court intelligence"""
-        
-        from app.retrieval.elite_classifier import EliteLegalClassifier
-        
-        # Initialize classifier
-        classifier = EliteLegalClassifier()
-        
-        # Get search strategy
-        strategy = classifier.get_search_strategy(query_text)
-        
-        # Perform hybrid search
-        hybrid_results = await self.search_hybrid(
-            query_text, 
-            top_k=top_k*3,  # Get more for filtering
-            semantic_weight=strategy['semantic_weight'],
-            keyword_weight=strategy['keyword_weight']
-        )
-        
-        # Classify and re-rank results
-        elite_results = []
-        for result in hybrid_results:
-            # Classify the chunk
-            classification = classifier.classify_content(
-                result.chunk.title, 
-                result.chunk.content
-            )
-            
-            # Calculate elite score
-            elite_score = self._calculate_elite_score(
-                result.similarity_score,
-                classification,
-                strategy
-            )
-            
-            # Add classification metadata
-            result.chunk.metadata['elite_classification'] = {
-                'content_type': classification.content_type,
-                'legal_domain': classification.legal_domain,
-                'hierarchy_level': classification.hierarchy_level,
-                'authority_score': classification.authority_score,
-                'search_priority': classification.search_priority
-            }
-            
-            # Update similarity with elite score
-            result.similarity_score = elite_score
-            elite_results.append(result)
-        
-        # Sort by elite score and apply domain/type filtering
-        elite_results.sort(key=lambda x: x.similarity_score, reverse=True)
-        
-        # Smart filtering based on query strategy
-        filtered_results = self._apply_elite_filtering(
-            elite_results, strategy, top_k
-        )
-        
-        return filtered_results[:top_k]
-    
-    def _calculate_elite_score(
-        self, 
-        base_score: float, 
-        classification, 
-        strategy: Dict[str, Any]
-    ) -> float:
-        """Calculate elite ranking score"""
-        
-        # Base similarity score
-        elite_score = base_score * 0.5
-        
-        # Authority bonus
-        elite_score += classification.authority_score * strategy['authority_weight']
-        
-        # Content type preference
-        if strategy['prefer_legislation'] and classification.content_type == 'legislation':
-            elite_score += 0.2
-        elif not strategy['prefer_legislation'] and classification.content_type == 'court_ruling':
-            elite_score += 0.15
-        
-        # Domain match bonus
-        if classification.legal_domain == strategy['legal_domain']:
-            elite_score += 0.15
-        
-        # Hierarchy level bonus (articles are most valuable)
-        if classification.hierarchy_level == 'article':
-            elite_score += 0.1
-        elif classification.hierarchy_level in ['law', 'supreme_court']:
-            elite_score += 0.08
-        
-        return min(elite_score, 1.0)
-    
-    def _apply_elite_filtering(
-        self, 
-        results: List[SearchResult], 
-        strategy: Dict[str, Any], 
-        target_count: int
-    ) -> List[SearchResult]:
-        """Apply intelligent filtering for elite results"""
-        
-        if not results:
-            return results
-        
-        # Separate legislation and court rulings
-        legislation_results = [r for r in results 
-                             if r.chunk.metadata.get('elite_classification', {}).get('content_type') == 'legislation']
-        court_results = [r for r in results 
-                        if r.chunk.metadata.get('elite_classification', {}).get('content_type') == 'court_ruling']
-        
-        # Smart mixing based on query type
-        if strategy['prefer_legislation']:
-            # Prioritize legislation, add court examples
-            filtered = legislation_results[:max(target_count-1, target_count*2//3)]
-            remaining = target_count - len(filtered)
-            if remaining > 0:
-                filtered.extend(court_results[:remaining])
-        else:
-            # Prioritize court rulings, add legislation context
-            filtered = court_results[:max(target_count-1, target_count*2//3)]
-            remaining = target_count - len(filtered)
-            if remaining > 0:
-                filtered.extend(legislation_results[:remaining])
-        
-        return filtered

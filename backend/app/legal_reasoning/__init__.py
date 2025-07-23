@@ -1,0 +1,1 @@
+from .memo_processor import LegalMemoProcessor, LegalMemo

@@ -5,6 +5,8 @@ import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import { legalAPI, chatAPI } from './services/api';
 
+
+
 // Simple navigation helper
 const navigateTo = (path: string) => {
   window.history.pushState({}, '', path);
@@ -706,17 +708,49 @@ const ActionsBar: React.FC<ActionsBarProps> = ({ content, isLastMessage, message
   const [downloading, setDownloading] = useState(false);
 
   const handleCopy = async () => {
-    try {
-      // Clean HTML tags from content
-      const cleanContent = content.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+  try {
+    // Better HTML cleaning with more comprehensive approach
+    let cleanContent = content
+      .replace(/<br\s*\/?>/gi, '\n')      // Convert <br> to newlines
+      .replace(/<\/p>/gi, '\n\n')         // Convert </p> to double newlines
+      .replace(/<\/h[1-6]>/gi, '\n\n')    // Convert heading ends to double newlines
+      .replace(/<[^>]*>/g, '')            // Remove all HTML tags
+      .replace(/&nbsp;/g, ' ')            // Replace non-breaking spaces
+      .replace(/&amp;/g, '&')             // Replace HTML entities
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\s+/g, ' ')               // Replace multiple spaces with single space
+      .replace(/\n\s+/g, '\n')            // Clean up newlines with spaces
+      .replace(/\n{3,}/g, '\n\n')         // Max 2 consecutive newlines
+      .trim();
+
+    // Check if clipboard API is available
+    if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(cleanContent);
-      setCopied(true);
-      showToast('تم نسخ النص بنجاح', 'success');
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      showToast('فشل في نسخ النص', 'error');
+    } else {
+      // Fallback for older browsers or non-secure contexts
+      const textArea = document.createElement('textarea');
+      textArea.value = cleanContent;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
     }
-  };
+    
+    setCopied(true);
+    showToast('تم نسخ النص بنجاح', 'success');
+    setTimeout(() => setCopied(false), 2000);
+  } catch (error) {
+    console.error('Copy failed:', error);
+    showToast('فشل في نسخ النص', 'error');
+  }
+};
 
   const handleDownloadSingle = async () => {
     setDownloading(true);
@@ -1222,19 +1256,19 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({
       />
       
       <div
-        className="ai-response"
-          dangerouslySetInnerHTML={{ __html: formatAIResponse(content) }}  // ← ADD formatAIResponse here
-        style={{
-          // Enhanced Typography
-          fontFamily: "'Noto Sans Arabic', 'SF Pro Text', -apple-system, sans-serif",
-          direction: 'rtl',
-          textAlign: 'right',
-          lineHeight: '1.75',
-          color: '#1a202c',
-          position: 'relative',
-          zIndex: 5
-        }}
-      />
+  className="ai-response"
+   dangerouslySetInnerHTML={{ __html: formatAIResponse(content) }}
+  style={{
+    // Enhanced Typography
+    fontFamily: "'Noto Sans Arabic', 'SF Pro Text', -apple-system, sans-serif",
+    direction: 'rtl',
+    textAlign: 'right',
+    lineHeight: '1.75',
+    color: '#1a202c',
+    position: 'relative',
+    zIndex: 5
+  }}
+/>
       
       {/* Add ActionsBar for AI messages */}
       <ActionsBar
@@ -1249,72 +1283,7 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({
 };
 
 // Enhanced CSS for green theme typography (add this to your App.css)
-const greenThemeCSS = `
-/* Green Theme Typography Overrides */
-.ai-response-container .ai-response h1,
-.ai-response-container .ai-response h2,
-.ai-response-container .ai-response h3 {
-  background: linear-gradient(135deg, #006C35 0%, #059669 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
-}
 
-.ai-response-container .ai-response h2::before {
-  background: linear-gradient(180deg, #059669 0%, #006C35 100%) !important;
-}
-
-.ai-response-container .ai-response ul,
-.ai-response-container .ai-response ol {
-  border-right: 5px solid #006C35 !important;
-  box-shadow: 
-    0 2px 8px rgba(0, 108, 53, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
-}
-
-.ai-response-container .ai-response ul::before,
-.ai-response-container .ai-response ol::before {
-  background: linear-gradient(135deg, #006C35 0%, #059669 100%) !important;
-}
-
-.ai-response-container .ai-response li::marker {
-  color: #006C35 !important;
-}
-
-.ai-response-container .ai-response strong,
-.ai-response-container .ai-response b {
-  background: linear-gradient(90deg, 
-    rgba(0, 108, 53, 0.08) 0%, 
-    rgba(0, 108, 53, 0.04) 50%, 
-    rgba(0, 108, 53, 0.08) 100%
-  ) !important;
-  border: 1px solid rgba(0, 108, 53, 0.1) !important;
-}
-
-.ai-response-container .ai-response em,
-.ai-response-container .ai-response i {
-  color: #059669 !important;
-}
-
-.ai-response-container .ai-response blockquote {
-  background: linear-gradient(145deg, #f0fdf4 0%, #dcfce7 100%) !important;
-  border: 1px solid #bbf7d0 !important;
-  border-right: 6px solid #059669 !important;
-  box-shadow: 
-    0 8px 32px rgba(5, 150, 105, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
-}
-
-.ai-response-container .ai-response blockquote::before {
-  color: rgba(5, 150, 105, 0.2) !important;
-}
-
-.ai-response-container .ai-response code {
-  background: linear-gradient(145deg, #f0fdf4 0%, #dcfce7 100%) !important;
-  border: 1px solid #bbf7d0 !important;
-  color: #166534 !important;
-}
-`;
 interface MessageElement {
   type: 'heading' | 'paragraph' | 'list' | 'listItem' | 'strong' | 'emphasis' | 'text';
   level?: number; // for headings (1-6)
@@ -1417,197 +1386,66 @@ interface TableData {
 }
 
 // Clean formatAIResponse function - No colors, just clean structure
+// Enhanced version of your superior formatter
+// This combines your clean approach with multi-agent section detection
+
+const detectMultiAgentResponse = (content: string): boolean => {
+  const indicators = [
+    '📋', '🔍', '⚖️', '💡', '📚', '🎯',
+    'التحقق من صحة المراجع',
+    'الإجراءات المطلوبة', 
+    'التحليل القانوني',
+    'السوابق القضائية',
+    'مستوى الثقة:',
+    'التقييم:',
+    'الاستشهاد:',
+    'بناءً على التحليل القانوني',
+    'الأسس القانونية لحقوقك'
+  ];
+  
+  return indicators.some(indicator => content.includes(indicator));
+};
+
 const formatAIResponse = (content: string): string => {
-  // If content already has HTML tags, return as-is
-  if (content.includes('<table') || content.includes('<tr') || content.includes('<td')) {
-    return content;
-  }
-  
-  // Clean up the content first
-  let formattedContent = content
-    .replace(/\n{3,}/g, '\n\n') // Remove excessive newlines
-    .replace(/\r\n/g, '\n') // Normalize line endings
-    .trim();
-  
-  // STEP 1: Convert markdown tables to HTML tables
-  formattedContent = convertMarkdownTables(formattedContent);
-  
-  // STEP 2: Convert text-based tables to HTML tables  
-  formattedContent = convertTextTables(formattedContent);
-  
-  // STEP 3: Apply clean formatting - FIXED
-  if (!formattedContent.includes('<table') && !formattedContent.includes('<tr')) {
-    formattedContent = formattedContent
-      // Headers (all levels) - Clean and simple
-      .replace(/^#{4}\s+(.*$)/gm, '<h4 style="font-weight: 700; margin: 1rem 0 0.5rem 0; text-align: right; direction: rtl;">$1</h4>')
-      .replace(/^#{3}\s+(.*$)/gm, '<h3 style="font-weight: 700; margin: 1rem 0 0.5rem 0; text-align: right; direction: rtl;">$1</h3>')
-      .replace(/^#{2}\s+(.*$)/gm, '<h2 style="font-weight: 700; margin: 1.5rem 0 0.5rem 0; text-align: right; direction: rtl;">$1</h2>')
-      .replace(/^#{1}\s+(.*$)/gm, '<h1 style="font-weight: 700; margin: 1.5rem 0 0.5rem 0; text-align: right; direction: rtl;">$1</h1>')
-      
-      // Emoji headers (like 📋 الإجراءات المطلوبة) - Clean style
-      .replace(/^([📋🔍💼⚖️📊📝✅❌🎯🔥📄🚀💡⭐🎉🏛️🏠👤💰📑🎨🔧⚡🌟🎯]+)\s+(.+)$/gm, '<div style="font-size: 1.3rem; font-weight: 700; margin: 1.5rem 0 1rem 0; text-align: right; direction: rtl; padding: 0.5rem 0; border-bottom: 1px solid #e0e0e0;"><span style="margin-left: 0.5rem;">$1</span>$2</div>')
-      
-      // Section numbers with colons (like الخطوة1:, الخطوة2:) - Clean
-      .replace(/^(الخطوة\d+|الإجراء\d+|البند\d+|المرحلة\d+|النقطة\d+):\s*(.+)$/gm, '<div style="font-weight: 600; margin: 1rem 0 0.5rem 0; text-align: right; direction: rtl; padding: 0.3rem 0; border-right: 3px solid #ddd; padding-right: 0.8rem;"><strong>$1:</strong> $2</div>')
-      
-      // Legal references and conclusions - ONLY these get green color
-      .replace(/^(الخلاصة|النتيجة|الخلاصة القانونية|التوصية|الحكم|القرار):\s*(.+)$/gm, '<div style="font-weight: 600; margin: 1rem 0; text-align: right; direction: rtl; padding: 1rem; background: #f0fdf4; border-right: 4px solid #006C35; border-radius: 4px;"><strong style="color: #006C35;">$1:</strong> <span style="color: #006C35;">$2</span></div>')
-      
-      // Legal references (like المادة2 من نظام الشركات) - ONLY these get green color
-      .replace(/(المادة\s*\d+|الفقرة\s*\d+|البند\s*\d+|القسم\s*\d+)([^.]*)/g, '<span style="background: #f0fdf4; color: #006C35; padding: 0.2rem 0.4rem; border-radius: 3px; font-weight: 600;">$1$2</span>')
-      
-      // Regular colon-separated definitions - Clean style
-      .replace(/^([^:\n]{1,50}):\s*(.+)$/gm, '<div style="margin: 0.8rem 0; text-align: right; direction: rtl; padding: 0.5rem 0; border-bottom: 1px dotted #ddd;"><strong>$1:</strong> $2</div>')
-      
-      // Numbered sections (like 1. اختيار نوع الشركة:) - Clean
-      .replace(/^(\d+)\.\s+(.+?)[:：]\s*(.*)$/gm, '<div style="font-weight: 600; margin: 1rem 0; text-align: right; direction: rtl; padding: 0.5rem 0;"><span style="font-weight: 700; margin-left: 0.5rem;">$1.</span><strong>$2:</strong> $3</div>')
-      
-      // Simple numbered items (like 1. اختيار نوع الشركة) - Clean
-      .replace(/^(\d+)\.\s+(.+)$/gm, '<div style="margin: 0.8rem 0; text-align: right; direction: rtl; padding: 0.3rem 0;"><span style="font-weight: 700; margin-left: 0.5rem;">$1.</span>$2</div>')
-      
-      // FIXED: Bold text patterns - more specific
-      .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/__([^_\n]+)__/g, '<strong>$1</strong>')
-      
-      // Bullet points with various symbols - Clean
-      .replace(/^[•·]\s+(.+)$/gm, '<li style="margin: 0.3rem 0; text-align: right; direction: rtl; list-style: none; position: relative; padding-right: 1rem;">$1</li>')
-      .replace(/^[-*]\s+(.+)$/gm, '<li style="margin: 0.3rem 0; text-align: right; direction: rtl; list-style: none; position: relative; padding-right: 1rem;">$1</li>')
-      
-      // FIXED: Emphasis patterns - more specific
-      .replace(/\*([^*\n]+)\*/g, '<em style="font-style: italic;">$1</em>')
-      .replace(/_([^_\n]+)_/g, '<em style="font-style: italic;">$1</em>')
-      
-      // Time and cost indicators - Clean
-      .replace(/^(المدة|التكلفة|الرسوم|التوقيت|الفترة):\s*(.+)$/gm, '<div style="margin: 0.5rem 0; text-align: right; direction: rtl; padding: 0.3rem 0; font-size: 0.95em;"><strong>$1:</strong> $2</div>');
-      
-      // FIXED: Split into lines first, then process
-      const lines = formattedContent.split('\n');
-      const processedLines = lines.map(line => {
-        const trimmedLine = line.trim();
-        
-        // Skip lines that are already formatted
-        if (trimmedLine.startsWith('<') || trimmedLine === '') {
-          return line;
-        }
-        
-        // Wrap regular text lines in paragraphs
-        return `<p style="margin: 0.5rem 0; text-align: right; direction: rtl; line-height: 1.6;">${trimmedLine}</p>`;
-      });
-      
-      formattedContent = processedLines.join('\n');
-      
-      // Add bullet points to list items
-      formattedContent = formattedContent
-        .replace(/<li style="margin: 0\.3rem 0; text-align: right; direction: rtl; list-style: none; position: relative; padding-right: 1rem;">([^<]+)<\/li>/g, '<li style="margin: 0.3rem 0; text-align: right; direction: rtl; list-style: none; position: relative; padding-right: 1rem;"><span style="position: absolute; right: 0; font-weight: 700;">•</span>$1</li>')
-        
-        // Wrap consecutive list items in proper ul tags
-        .replace(/(<li[^>]*>.*?<\/li>(?:\s*<li[^>]*>.*?<\/li>)*)/g, '<ul style="margin: 1rem 0; padding: 0;">$1</ul>')
-        
-        // Clean up empty paragraphs and nested elements
-        .replace(/<p[^>]*>\s*<\/p>/g, '')
-        .replace(/<p[^>]*>(\s*<h[1-6][^>]*>)/g, '$1')
-        .replace(/(<\/h[1-6]>\s*)<\/p>/g, '$1')
-        .replace(/<p[^>]*>(\s*<div[^>]*>)/g, '$1')
-        .replace(/(<\/div>\s*)<\/p>/g, '$1')
-        .replace(/<p[^>]*>(\s*<ul[^>]*>)/g, '$1')
-        .replace(/(<\/ul>\s*)<\/p>/g, '$1');
-  }
-  
-  return formattedContent;
+  return content.trim()
+    // Handle markdown headers first: #### → <h3>, ### → <h3>
+    .replace(/^####\s*(.*$)/gm, '<h3>$1</h3>')
+    .replace(/^###\s*(.*$)/gm, '<h3>$1</h3>')
+    .replace(/^##\s*(.*$)/gm, '<h2>$1</h2>')
+    .replace(/^#\s*(.*$)/gm, '<h1>$1</h1>')
+    
+    // Multi-agent headers: 💡 Text: → <h3>
+    .replace(/(📋|🔍|⚖️|💡|📚|🎯)\s*([^:\n]+):?/gm, '<h3>$1 $2</h3>')
+    
+    // Regular headers: Text: → <h3>
+    .replace(/^([^:\n<]+):/gm, '<h3>$1:</h3>')
+    
+    // Numbered points: 1. Text: Content → <div class="legal-point">
+    .replace(/^(\d+)\.\s*([^:]+):\s*(.*?)(?=\n\d+\.|\n[^0-9]|\n*$)/gms, 
+      '<div class="legal-point"><strong>$1. $2:</strong><p>$3</p></div>')
+    
+    // Bullet points: • Text → <li>
+    .replace(/^[•·-]\s*(.*?)(?=\n[•·-]|\n[^•·-]|\n*$)/gms, '<li>$1</li>')
+    
+    // Bold text: **text** → <strong>
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    
+    // Paragraphs: double line breaks
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/^/, '<p>')
+    .replace(/$/, '</p>')
+    
+    // Clean up structure
+    .replace(/<p>(<h[1-3]>)/g, '$1')
+    .replace(/(<\/h[1-3]>)<\/p>/g, '$1')
+    .replace(/<p>(<div class="legal-point">)/g, '$1')
+    .replace(/(<\/div>)<\/p>/g, '$1')
+    .replace(/<p>(<li)/g, '<ul>$1')
+    .replace(/(<\/li>)<\/p>/g, '$1</ul>')
+    .replace(/<p>\s*<\/p>/g, '');
 };
 
-// Simple function to ensure formatting is applied consistently
-const ensureConsistentFormatting = (content: string): string => {
-  // Always format the content the same way, regardless of source
-  return formatAIResponse(content);
-};
 
-// Add this to your streaming response handler
-const handleStreamingContent = (chunk: string, fullContent: string) => {
-  // For streaming, format the full content each time
-  return ensureConsistentFormatting(fullContent);
-};
-
-// Add this to your message loading from storage/API
-const handleStoredContent = (content: string) => {
-  // For stored content, ensure it's formatted consistently
-  return ensureConsistentFormatting(content);
-};
-
-// Function to convert markdown-style tables
-const convertMarkdownTables = (content: string): string => {
-  // Match markdown table pattern
-  const tableRegex = /(\|.*\|[\r\n]+\|[-\s\|:]+\|[\r\n]+((\|.*\|[\r\n]*)+))/g;
-  
-  return content.replace(tableRegex, (match) => {
-    const lines = match.trim().split(/[\r\n]+/);
-    if (lines.length < 3) return match;
-    
-    const headerLine = lines[0];
-    const separatorLine = lines[1];
-    const dataLines = lines.slice(2);
-    
-    // Parse header
-    const headers: string[] = headerLine.split('|').map(h => h.trim()).filter(h => h);
-    
-    // Parse data rows
-    const rows: string[][] = dataLines.map(line => 
-      line.split('|').map(cell => cell.trim()).filter(cell => cell)
-    ).filter(row => row.length > 0);
-    
-    // Generate HTML table
-    let html = '<table class="comparison-table">';
-    
-    // Table header
-    html += '<thead><tr>';
-    headers.forEach(header => {
-      html += `<th>${header}</th>`;
-    });
-    html += '</tr></thead>';
-    
-    // Table body
-    html += '<tbody>';
-    rows.forEach(row => {
-      html += '<tr>';
-      row.forEach(cell => {
-        html += `<td>${cell}</td>`;
-      });
-      html += '</tr>';
-    });
-    html += '</tbody></table>';
-    
-    return html;
-  });
-};
-
-// Function to convert text-based tables (Arabic legal format)
-const convertTextTables = (content: string): string => {
-  // Pattern for Arabic comparison tables
-  const arabicComparisonRegex = /(?:مقارنة|الفرق|الفروق|جدول|مقارنة بين)[\s\S]*?(?=\n\n|\n$|$)/gi;
-  
-  return content.replace(arabicComparisonRegex, (match) => {
-    // Check if this looks like a table structure
-    const lines = match.split('\n').map(line => line.trim()).filter(line => line);
-    
-    // Look for patterns that suggest tabular data
-    const hasMultipleColumns = lines.some(line => 
-      line.includes(':') && line.includes('|') || 
-      line.includes('vs') || 
-      line.includes('مقابل') ||
-      (line.includes('-') && line.length > 20)
-    );
-    
-    if (!hasMultipleColumns) return match;
-    
-    // Try to parse as comparison table
-    const tableData = parseArabicComparison(lines);
-    if (tableData.rows.length > 0) {
-      return generateComparisonTable(tableData);
-    }
-    
-    return match;
-  });
-};
 
 // Parse Arabic comparison text into table structure
 const parseArabicComparison = (lines: string[]): TableData => {
@@ -1698,16 +1536,7 @@ const containsTableStructure = (content: string): boolean => {
 };
 
 // Enhanced format function with table detection
-const formatAIResponseEnhanced = (content: string): string => {
-  // First check if we have table-like content
-  if (containsTableStructure(content)) {
-    console.log('🔍 Table structure detected, converting...');
-    return formatAIResponse(content);
-  }
-  
-  // Otherwise use the existing format function
-  return formatAIResponse(content);
-};
+
 
 const MessageRenderer: React.FC<{ elements: MessageElement[] }> = ({ elements }) => {
   const renderElement = (element: MessageElement, index: number): React.ReactNode => {
@@ -2469,34 +2298,34 @@ const handleDeleteCancel = () => {
       selectedConversation || undefined,
       guestSessionId,
       
-      // 📡 Real-time streaming callback
+            // 📡 Real-time streaming callback
       (chunk: string) => {
         streamingContent += chunk;
         
-        // Update the assistant message in real-time
+        // Update the assistant message in real-time with RAW content
         setMessages(prev => prev.map(msg => 
           msg.id === assistantMessageId 
-            ? { ...msg, content: formatAIResponse(streamingContent) }
+            ? { ...msg, content: streamingContent }  // ← FIX: No formatting during streaming
             : msg
         ));
       },
-      
+
       // ✅ Completion handler
       (response: any) => {
         console.log('📥 Received response:', { contentLength: response.fullResponse?.length || 0 });
         
-        // Update final message with complete data
-        // This is already correct:
-          setMessages(prev => prev.map(msg =>
-            msg.id === assistantMessageId
-            ? {
-                ...msg,
-                id: response.ai_message?.id || assistantMessageId,
-                content: formatAIResponse(response.ai_message?.content || streamingContent), // ← Good!
-                timestamp: response.ai_message?.timestamp || new Date().toISOString()
-              }
-            : msg
-          ));
+        // Update final message with complete data and SINGLE formatting pass
+        const finalContent = response.ai_message?.content || streamingContent;
+        setMessages(prev => prev.map(msg =>
+          msg.id === assistantMessageId
+          ? {
+              ...msg,
+              id: response.ai_message?.id || assistantMessageId,
+              content: formatAIResponse(finalContent), // ← FIX: Format only once at the end
+              timestamp: response.ai_message?.timestamp || new Date().toISOString()
+            }
+          : msg
+        ));
 
         // 🔄 Handle conversation and user data updates (your existing logic)
         if (response.conversation_id && !selectedConversation) {
@@ -2565,8 +2394,8 @@ const handleDeleteCancel = () => {
  const suggestedQuestions = [
   'ما هي إجراءات تأسيس شركة تجارية؟',
   'حقوق الموظف عند إنهاء الخدمة',
-  'دراسة جدوى دقيقة لمصنع أدوية',
-  'ساعدني في وضع ميزانية لمشروعي الحالي'
+  'ما هي عقوبات التهرب الضريبي؟',
+  'ما هي حقوق المستهلك في السعودية؟',
 ];
   const LegalLoadingIndicator: React.FC = () => {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
@@ -2799,38 +2628,51 @@ const handleDeleteCancel = () => {
         }
       `}</style>
       
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : sidebarOpen ? '320px 1fr' : '1fr',
-        gridTemplateAreas: isMobile 
-          ? '"main"'
-          : sidebarOpen 
-            ? '"sidebar main"'
-            : '"main"',
-        height: '100vh',
-        fontFamily: "'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        background: '#f7f7f8',
-        direction: 'rtl',
-        contain: 'layout style paint',
-        overflow: 'hidden'
-      }}>
+<div style={{
+  display: 'grid',
+  gridTemplateColumns: isMobile 
+    ? (sidebarOpen ? '320px 1fr' : '1fr')
+    : sidebarOpen 
+      ? '320px 1fr' 
+      : '1fr',
+  gridTemplateAreas: isMobile 
+    ? (sidebarOpen ? '"sidebar main"' : '"main"')
+    : sidebarOpen 
+      ? '"sidebar main"'
+      : '"main"',
+  // 🔧 MOBILE FIX: Dynamic height
+  height: isMobile ? 'auto' : '100vh',
+  minHeight: isMobile ? '100vh' : 'auto',
+  fontFamily: "'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  background: '#f7f7f8',
+  direction: 'rtl',
+  contain: 'layout style paint',
+  // 🔧 MOBILE FIX: Allow scrolling
+  overflow: isMobile ? 'visible' : 'hidden'
+}}>
         
         {/* Mobile Backdrop */}
-        {isMobile && sidebarOpen && (
-          <div 
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0, 0, 0, 0.5)',
-              zIndex: 40,
-              opacity: 1,
-              transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              backdropFilter: 'blur(4px)',
-              willChange: 'opacity'
-            }}
-            onClick={toggleSidebar}
-          />
-        )}
+       {/* Mobile Backdrop */}
+{isMobile && sidebarOpen && (
+  <div 
+    style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0, 0, 0, 0.5)',
+      zIndex: 40,
+      opacity: 1,
+      transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      backdropFilter: 'blur(4px)',
+      willChange: 'opacity'
+    }}
+    onClick={(e) => {
+      // Only close if clicking the backdrop itself, not scrolling
+      if (e.target === e.currentTarget) {
+        toggleSidebar();
+      }
+    }}
+  />
+)}
 
         {/* Sidebar */}
         {/* Sidebar Toggle Button */}
@@ -2877,9 +2719,10 @@ const handleDeleteCancel = () => {
   style={{
     gridArea: 'sidebar',
     position: isMobile ? 'fixed' : 'relative',
-    inset: isMobile ? '0 auto 0 0' : 'auto',
+    inset: isMobile ? '0 0 0 auto' : 'auto',  // ← This positions it on the RIGHT
     width: isMobile ? '320px' : '100%',
-    height: '100vh',
+    // 🔧 MOBILE FIX: Dynamic height
+    height: isMobile ? '100vh' : '100vh', // Keep 100vh for sidebar
     background: '#171717',
     display: sidebarOpen ? 'flex' : 'none',
     flexDirection: 'column',
@@ -3505,13 +3348,17 @@ const handleDeleteCancel = () => {
 
         {/* Main Chat Area */}
         <div style={{
-          gridArea: 'main',
-          display: 'flex',
-          flexDirection: 'column',
-          background: 'white',
-          height: '100vh',
-          position: 'relative'
-        }}>
+  gridArea: 'main',
+  display: 'flex',
+  flexDirection: 'column',
+  background: 'white',
+  // 🔧 MOBILE FIX: Dynamic height
+  height: isMobile ? 'auto' : '100vh',
+  minHeight: isMobile ? '100vh' : 'auto',
+  position: 'relative',
+  // 🔧 MOBILE FIX: Allow overflow on mobile
+  overflow: isMobile ? 'visible' : 'hidden'
+}}>
           <div style={{
   background: isGuest 
     ? cooldownInfo.questionsUsed >= cooldownInfo.maxQuestions
@@ -3569,7 +3416,11 @@ const handleDeleteCancel = () => {
     flex: 1,
     overflowY: 'auto',
     padding: '24px 0',
-    scrollBehavior: 'smooth'
+    scrollBehavior: 'smooth',
+    // 🔧 MOBILE FIX: Better touch scrolling
+    WebkitOverflowScrolling: 'touch',
+    // 🔧 MOBILE FIX: Ensure proper height on mobile
+    minHeight: isMobile ? '60vh' : 'auto'
   }}
 >
             {messages.length === 0 ? (
@@ -3593,7 +3444,7 @@ const handleDeleteCancel = () => {
                   color: '#2d333a',
                   marginBottom: '16px'
                 }}>
-                  مرحبا بك في معين
+                  اهلا بك في حكم
                 </h2>
                 <p style={{
                   fontSize: 'clamp(24px, 2vw, 16px)',
@@ -3602,7 +3453,7 @@ const handleDeleteCancel = () => {
                   maxWidth: '600px',
                   lineHeight: '1.6'
                 }}>
-                  احصل على استشارات مالية وادارية وقانونية دقيقة ومفصلة مبنية على القانون السعودي باستخدام تقنيات الذكاء الاصطناعي المتقدمة
+                  احصل على استشارات قانونية دقيقة ومفصلة مبنية على القانون السعودي باستخدام تقنيات الذكاء الاصطناعي المتقدمة
                 </p>
                 
                 <div style={{
@@ -3678,8 +3529,9 @@ const handleDeleteCancel = () => {
               <div 
   className="chat-messages-container"
   style={{
-    maxWidth: sidebarOpen ? '1200%' : '1400%',
-    padding: sidebarOpen ? '0 3rem 0 0' : '0 2rem 0 11rem'
+    // 🔧 MOBILE FIX: Different calculations for mobile
+    maxWidth: isMobile ? '100%' : (sidebarOpen ? '1200%' : '1400%'),
+    padding: isMobile ? '0 1rem' : (sidebarOpen ? '0 3rem 0 0' : '0 2rem 0 11rem')
   }}
 >
                 {messages.map((message, index) => (
@@ -3689,7 +3541,9 @@ const handleDeleteCancel = () => {
   style={{
     display: 'flex',
     flexDirection: 'row',
-    justifyContent: message.role === 'user' ? 'flex-start' : 'center',
+    justifyContent: isMobile 
+  ? (message.role === 'user' ? 'flex-end' : 'center') 
+  : (message.role === 'user' ? 'flex-start' : 'center'),
     marginBottom: '24px',
     animationDelay: `${index * 0.1}s`
   }}
@@ -3722,10 +3576,14 @@ const handleDeleteCancel = () => {
     fontSize: message.role === 'user' ? '25px' : '25px',
     lineHeight: '1.5',
     textAlign: 'right',
-    marginRight: message.role === 'user' 
+    marginRight: isMobile 
+  ? (message.role === 'user' ? '0.2rem' : 'auto')
+  : (message.role === 'user' 
       ? (sidebarOpen ? '5%' : '20%') 
-      : (sidebarOpen ? '0%' : '12%'),
-    marginLeft: message.role === 'user' ? '0%' : '0%',
+      : (sidebarOpen ? '0%' : '12%')),
+marginLeft: isMobile 
+  ? (message.role === 'user' ? 'auto' : 'auto')
+  : (message.role === 'user' ? '0%' : '0%'),
     wordBreak: 'break-word',
     overflowWrap: 'break-word',
     whiteSpace: 'normal',

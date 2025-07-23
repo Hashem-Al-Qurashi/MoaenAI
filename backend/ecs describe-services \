@@ -1,0 +1,617 @@
+{
+    "service": {
+        "serviceArn": "arn:aws:ecs:eu-central-1:205979660707:service/moaen-ai-cluster/moaen-ai-backend-service",
+        "serviceName": "moaen-ai-backend-service",
+        "clusterArn": "arn:aws:ecs:eu-central-1:205979660707:cluster/moaen-ai-cluster",
+        "loadBalancers": [
+            {
+                "targetGroupArn": "arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9",
+                "containerName": "backend-container",
+                "containerPort": 8000
+            }
+        ],
+        "serviceRegistries": [],
+        "status": "ACTIVE",
+        "desiredCount": 1,
+        "runningCount": 1,
+        "pendingCount": 0,
+        "launchType": "FARGATE",
+        "platformVersion": "LATEST",
+        "platformFamily": "Linux",
+        "taskDefinition": "arn:aws:ecs:eu-central-1:205979660707:task-definition/moaen-ai-backend:6",
+        "deploymentConfiguration": {
+            "deploymentCircuitBreaker": {
+                "enable": false,
+                "rollback": false
+            },
+            "maximumPercent": 200,
+            "minimumHealthyPercent": 100
+        },
+        "deployments": [
+            {
+                "id": "ecs-svc/6298776981560188662",
+                "status": "PRIMARY",
+                "taskDefinition": "arn:aws:ecs:eu-central-1:205979660707:task-definition/moaen-ai-backend:6",
+                "desiredCount": 0,
+                "pendingCount": 0,
+                "runningCount": 0,
+                "failedTasks": 0,
+                "createdAt": "2025-07-17T18:40:17.455000+03:00",
+                "updatedAt": "2025-07-17T18:40:17.455000+03:00",
+                "launchType": "FARGATE",
+                "platformVersion": "1.4.0",
+                "platformFamily": "Linux",
+                "networkConfiguration": {
+                    "awsvpcConfiguration": {
+                        "subnets": [
+                            "subnet-0eba1d21dd56d5cc1",
+                            "subnet-07fbeff421713a656"
+                        ],
+                        "securityGroups": [
+                            "sg-08519e92921fd3c5b"
+                        ],
+                        "assignPublicIp": "DISABLED"
+                    }
+                },
+                "rolloutState": "IN_PROGRESS",
+                "rolloutStateReason": "ECS deployment ecs-svc/6298776981560188662 in progress."
+            },
+            {
+                "id": "ecs-svc/6464278931833591510",
+                "status": "ACTIVE",
+                "taskDefinition": "arn:aws:ecs:eu-central-1:205979660707:task-definition/moaen-ai-backend:6",
+                "desiredCount": 1,
+                "pendingCount": 0,
+                "runningCount": 1,
+                "failedTasks": 0,
+                "createdAt": "2025-07-17T18:09:59.044000+03:00",
+                "updatedAt": "2025-07-17T18:19:22.311000+03:00",
+                "launchType": "FARGATE",
+                "platformVersion": "1.4.0",
+                "platformFamily": "Linux",
+                "networkConfiguration": {
+                    "awsvpcConfiguration": {
+                        "subnets": [
+                            "subnet-0eba1d21dd56d5cc1",
+                            "subnet-07fbeff421713a656"
+                        ],
+                        "securityGroups": [
+                            "sg-08519e92921fd3c5b"
+                        ],
+                        "assignPublicIp": "DISABLED"
+                    }
+                },
+                "rolloutState": "COMPLETED",
+                "rolloutStateReason": "ECS deployment ecs-svc/6464278931833591510 completed."
+            }
+        ],
+        "roleArn": "arn:aws:iam::205979660707:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+        "events": [
+            {
+                "id": "6b97b013-88da-481a-9854-88c4c7ef9b97",
+                "createdAt": "2025-07-17T18:19:22.318000+03:00",
+                "message": "(service moaen-ai-backend-service) has reached a steady state."
+            },
+            {
+                "id": "ef9fd862-8a2e-4c88-b92f-86b5c2b5e519",
+                "createdAt": "2025-07-17T18:19:22.317000+03:00",
+                "message": "(service moaen-ai-backend-service) (deployment ecs-svc/6464278931833591510) deployment completed."
+            },
+            {
+                "id": "18ef7985-ced4-4074-b8c1-4abb746f419e",
+                "createdAt": "2025-07-17T18:18:19.054000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/4471011339838017425) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "18d0109a-54f2-4d58-bdbf-dabb1e95090b",
+                "createdAt": "2025-07-17T18:18:19.051000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "46ab44f9-b93b-4b30-9d1d-6f1eeff3b6be",
+                "createdAt": "2025-07-17T18:18:09.707000+03:00",
+                "message": "(service moaen-ai-backend-service) has stopped 1 running tasks: (task d1813899be734c258908c7149875a648)."
+            },
+            {
+                "id": "edc851b5-273e-4376-ba05-8c36e986dbf5",
+                "createdAt": "2025-07-17T18:16:26.273000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "75615e77-7a08-4f76-b1b7-b7b34abd2157",
+                "createdAt": "2025-07-17T18:15:55.905000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task d56db5181e05470985d838e4c60f5fb6)."
+            },
+            {
+                "id": "3d5181f0-1004-49ae-927d-2d1c37cb50ab",
+                "createdAt": "2025-07-17T18:10:01.292000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/5160095698951069883) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "1d674c49-0b15-4f6b-a69e-69ecc1e555c9",
+                "createdAt": "2025-07-17T18:10:01.288000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "bea9e82e-c9a9-42a8-97f1-9be897b1f960",
+                "createdAt": "2025-07-17T18:09:51.667000+03:00",
+                "message": "(service moaen-ai-backend-service) has stopped 1 running tasks: (task 898f7339bc094b928020003511fa6ca5)."
+            },
+            {
+                "id": "9c7581e8-72f8-4efc-8b37-e6d051dd0666",
+                "createdAt": "2025-07-17T18:08:59.365000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "bf3f8b6b-1e46-4ade-9b18-5d34c951ba4f",
+                "createdAt": "2025-07-17T18:08:29.456000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task d1813899be734c258908c7149875a648)."
+            },
+            {
+                "id": "b931c5e7-a7d4-4dc1-81b4-e36828ba629e",
+                "createdAt": "2025-07-17T18:07:15.406000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/7009125686926900362) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "9471724d-6ed2-495e-94d7-b4b6ee44b5d1",
+                "createdAt": "2025-07-17T18:07:15.401000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "7d7e89de-3829-4526-b4ef-4b1c6487b197",
+                "createdAt": "2025-07-17T18:07:05.851000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "4d294d31-39d5-4279-8ad7-f74818b119ae",
+                "createdAt": "2025-07-17T18:06:35.507000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task f667502b87ab4b448fb75daff4dc696b)."
+            },
+            {
+                "id": "90e827c8-32aa-4838-a426-f7fd2c2b125b",
+                "createdAt": "2025-07-17T18:01:23.157000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/7009125686926900362) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "3e2f7226-1d88-4386-b5f9-80ef94207e93",
+                "createdAt": "2025-07-17T18:01:23.153000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "f4b0c2ba-e7be-4393-b77d-8f277ffc7dc5",
+                "createdAt": "2025-07-17T18:01:02.496000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "3839c953-fa81-4739-bd6f-d9f76ffa17df",
+                "createdAt": "2025-07-17T18:00:30.760000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task bd09f8612b8246dc9afc8be097eda41e)."
+            },
+            {
+                "id": "21654818-59ec-4bcb-934e-8cec8859004a",
+                "createdAt": "2025-07-17T17:55:20.246000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/7009125686926900362) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "359a29de-e45a-4dc4-a811-6730bc946843",
+                "createdAt": "2025-07-17T17:55:20.241000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "f76b6836-4909-4e03-891d-3c32f4ba2ef8",
+                "createdAt": "2025-07-17T17:55:09.817000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "7e1da7c5-3655-49db-a5c0-fd214a5fe8d0",
+                "createdAt": "2025-07-17T17:54:38.381000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 9ebbb2de6eec4794860f62c571c9676a)."
+            },
+            {
+                "id": "1298f6d1-2bd2-427f-8c31-9c3fbdd341f7",
+                "createdAt": "2025-07-17T17:49:26.322000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "ed654cb2-d983-4d42-863a-e3a9af54a0fd",
+                "createdAt": "2025-07-17T17:49:26.253000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/7078100583675756444) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "08902902-727c-4f25-81c8-99df7dec67ef",
+                "createdAt": "2025-07-17T17:49:26.248000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "d0673788-e517-4a2b-bdac-9df4d7336619",
+                "createdAt": "2025-07-17T17:48:46.297000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "6abe6be5-a869-41e6-92ae-006da565c732",
+                "createdAt": "2025-07-17T17:48:14.183000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task a9f4f3f80174451f8819f133d66a306b)."
+            },
+            {
+                "id": "d182d0e2-ee49-4128-ad6c-de9b4cd5ca0f",
+                "createdAt": "2025-07-17T17:47:54.264000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/7078100583675756444) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "d9ece961-a5b7-4fb7-8577-d228208bf3e2",
+                "createdAt": "2025-07-17T17:47:54.260000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "2d212317-2e04-4f39-b0d9-6346ed8927c1",
+                "createdAt": "2025-07-17T17:46:41.129000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 7d1b79007d154f1cab5973999717ef71)."
+            },
+            {
+                "id": "a3ca7f4e-b1aa-401b-9a87-a1515e368e31",
+                "createdAt": "2025-07-17T17:41:25.795000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "59632462-6c27-4d1d-9b50-bd7e2c469138",
+                "createdAt": "2025-07-17T17:41:25.791000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "f84b4afb-ed0f-4ee0-90b8-f202680fdf30",
+                "createdAt": "2025-07-17T17:41:07.072000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "2e9d0586-7f77-41df-a1ee-1ad74a6b6df2",
+                "createdAt": "2025-07-17T17:40:38.004000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task d413242108f441aa939b3de67fe7a9f7)."
+            },
+            {
+                "id": "a3300f7f-99dc-4af7-9a87-a7cf6ac2ed7d",
+                "createdAt": "2025-07-17T17:35:07.534000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "c87f6b18-b5a4-4909-98fb-94acdf77ff69",
+                "createdAt": "2025-07-17T17:35:07.529000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "a79d9886-ec71-4bc6-befb-f31db838e733",
+                "createdAt": "2025-07-17T17:34:47.530000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "eefcf8f0-3e8e-4858-8249-6b7e1652a0cf",
+                "createdAt": "2025-07-17T17:34:15.951000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 2a614859fbc842998e7ea62388858d22)."
+            },
+            {
+                "id": "298a412e-b3c7-48c0-b843-4faec1cb9f02",
+                "createdAt": "2025-07-17T17:29:00.869000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "db1da325-23ff-49fa-8b3a-a3d7821e0d88",
+                "createdAt": "2025-07-17T17:29:00.767000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "00b01c2f-ad72-401a-b7b7-77aa0b3326f5",
+                "createdAt": "2025-07-17T17:29:00.763000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "2183ee04-7213-4de4-a664-3014e8412b34",
+                "createdAt": "2025-07-17T17:28:20.656000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "c1b0937f-d2ba-42c2-88dd-4f2905d45737",
+                "createdAt": "2025-07-17T17:27:50.122000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 75a3a160a0614edbb104fd2994501200)."
+            },
+            {
+                "id": "16fc6b9f-b3ce-4138-85ab-d3d725c67249",
+                "createdAt": "2025-07-17T17:22:33.404000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "7227b8f4-83cb-424f-9c8a-087d3daaaacb",
+                "createdAt": "2025-07-17T17:22:33.306000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "efbcf55d-8758-4422-9ad0-b8fa93981302",
+                "createdAt": "2025-07-17T17:22:33.302000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "045214b2-83a5-4dce-9e4a-ea2f0350cc63",
+                "createdAt": "2025-07-17T17:21:51.884000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "42ea0b3d-e709-42b1-8718-d3c2bcade17d",
+                "createdAt": "2025-07-17T17:21:12.849000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task d384fc44dcf8496581f86c1c84ff94d8)."
+            },
+            {
+                "id": "9e371535-303f-4936-a5f7-8b2194f07a25",
+                "createdAt": "2025-07-17T17:15:55.924000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "2cf5b6c4-e51a-4d31-9dd0-f2977e2581c0",
+                "createdAt": "2025-07-17T17:15:55.921000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "5fa6d380-bdc6-48ac-a4ff-560a238bd6b2",
+                "createdAt": "2025-07-17T17:15:45.371000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "5ef0bca9-cfec-49c0-a1ea-29cef720a79f",
+                "createdAt": "2025-07-17T17:15:15.975000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 6068d828c4134daf9bcef97893f3553d)."
+            },
+            {
+                "id": "832c9d29-e1db-42af-9aea-6eb5f2aa0dae",
+                "createdAt": "2025-07-17T17:10:08.941000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "62c02d42-942f-45c5-b163-f79c6590e852",
+                "createdAt": "2025-07-17T17:09:59.344000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "8444c745-c0d0-41b5-8259-d0cff4812cca",
+                "createdAt": "2025-07-17T17:09:21.696000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "8b400609-bcae-410a-a3d7-47356ac73a28",
+                "createdAt": "2025-07-17T17:08:51.350000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 5f07dd3e075844728acdfac7772c399e)."
+            },
+            {
+                "id": "dd1a508f-c1d4-44cf-aa1a-c461c323187f",
+                "createdAt": "2025-07-17T17:03:36.826000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "bc3883e9-9727-4c32-a9ff-b8fd81e8daba",
+                "createdAt": "2025-07-17T17:03:36.822000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "d91d7671-db8f-409e-8093-3d0a33ce3428",
+                "createdAt": "2025-07-17T17:03:26.296000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "93a5871a-6dc7-46e6-a24a-70e58fe819cb",
+                "createdAt": "2025-07-17T17:02:56.020000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 06c38e574c224ede80619d8fa6ceada3)."
+            },
+            {
+                "id": "42607144-4c0e-4631-9a37-e08da1566a54",
+                "createdAt": "2025-07-17T16:57:35.381000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "6edf7b46-a943-4919-95e4-b3baf835fb55",
+                "createdAt": "2025-07-17T16:57:35.376000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "ef9bc4da-d1ce-47fc-8d33-00407e4c3016",
+                "createdAt": "2025-07-17T16:57:24.660000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "bc8f74e7-57ef-4548-8e27-dd11def2187b",
+                "createdAt": "2025-07-17T16:56:54.347000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 381e406959f440bd9dab7e668476449e)."
+            },
+            {
+                "id": "fe6c3f22-b163-4470-8fee-9b0fd6f0dbbe",
+                "createdAt": "2025-07-17T16:51:28.105000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "77e385d4-939d-474b-bdc0-6d238ccd569d",
+                "createdAt": "2025-07-17T16:51:28.100000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "01516648-a8f5-4e1a-904e-7d329d0b2a9d",
+                "createdAt": "2025-07-17T16:51:17.626000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "b9b7d7c8-dbfe-4fd2-9948-71836ab26eaa",
+                "createdAt": "2025-07-17T16:50:47.658000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 54aebc16c25344b5965abc265327d8c8)."
+            },
+            {
+                "id": "1d9719e7-eaaf-4849-9dfa-38fce8798b0e",
+                "createdAt": "2025-07-17T16:45:27.983000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "677131bd-10d7-4205-9561-f1f358aaa2ef",
+                "createdAt": "2025-07-17T16:45:27.979000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "f65b2328-5123-4a7c-a1ad-70fd0d0ac5e0",
+                "createdAt": "2025-07-17T16:45:19.017000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "033b56cc-9681-42e5-8451-3bf1195c44a3",
+                "createdAt": "2025-07-17T16:44:39.922000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task b10825032df141dda14b199d69e5d25d)."
+            },
+            {
+                "id": "a7255851-4d88-4ad3-94d8-18b42dac844a",
+                "createdAt": "2025-07-17T16:39:26.018000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "e3ac84bc-9069-4598-b5bb-48cb842db866",
+                "createdAt": "2025-07-17T16:39:25.913000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "b0560324-67d6-4666-a70f-d5e2b95a769a",
+                "createdAt": "2025-07-17T16:39:25.910000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "8a30fc55-cd9b-4f69-9b80-b89947abca03",
+                "createdAt": "2025-07-17T16:38:44.477000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "51f892c2-1b3f-498a-aaeb-415058818812",
+                "createdAt": "2025-07-17T16:38:13.872000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 979c4f78afc745a9b183354621c4d7c9)."
+            },
+            {
+                "id": "e72ccde2-58a0-413a-876e-5e1931428b18",
+                "createdAt": "2025-07-17T16:33:01.493000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "49fb0c27-06c9-4eac-bff3-8cb93aade548",
+                "createdAt": "2025-07-17T16:33:01.490000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "97b0e5e7-e29a-4625-8ee9-7c387fde143d",
+                "createdAt": "2025-07-17T16:32:51.890000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "5d37f158-95f8-40c6-bdee-88ff2ba9fa03",
+                "createdAt": "2025-07-17T16:32:20.817000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 861c4e6b2ecc403ab240b689810b85d4)."
+            },
+            {
+                "id": "352648d6-7170-419b-9b43-17d283567519",
+                "createdAt": "2025-07-17T16:27:08.893000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "0d8a1a0f-fcb7-488d-b6e1-fe22abacdee1",
+                "createdAt": "2025-07-17T16:27:08.889000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "852264df-9594-438e-9f9a-838b62ae64bd",
+                "createdAt": "2025-07-17T16:26:48.814000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "e6f46537-6b18-4277-b6b3-dcc0b8afd1d8",
+                "createdAt": "2025-07-17T16:26:18.095000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 72b6b076d272466284382e72eead86ac)."
+            },
+            {
+                "id": "616e5d34-9d14-4d9c-a90d-95863146fa44",
+                "createdAt": "2025-07-17T16:21:05.007000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "72d86feb-d1fb-43a7-a37e-3616dc0c78e3",
+                "createdAt": "2025-07-17T16:21:05.001000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "316a3c3d-a394-45cd-ab1c-12366722251d",
+                "createdAt": "2025-07-17T16:20:54.951000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "ff0b02bb-f5c2-4501-aa70-dd09effead80",
+                "createdAt": "2025-07-17T16:20:25.311000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task c7ccff6bfd3d41238f34c53983eb05ab)."
+            },
+            {
+                "id": "50254fb4-846c-447b-ae20-d85fcfa05531",
+                "createdAt": "2025-07-17T16:15:03.091000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "d0fa0c66-5aaa-4fd7-9991-65375b449db6",
+                "createdAt": "2025-07-17T16:15:03.088000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "c0e1b765-5776-4031-a43d-f5bad57c52e7",
+                "createdAt": "2025-07-17T16:14:42.887000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "fd344fdf-9b92-4aca-a1f3-318f2f4ae665",
+                "createdAt": "2025-07-17T16:14:11.775000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 34b0b2a1ae7c4b0586441e7b6b6f8f21)."
+            },
+            {
+                "id": "6e0b7ec8-dce8-4967-8710-61e2e5585368",
+                "createdAt": "2025-07-17T16:08:59.968000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            },
+            {
+                "id": "027ad71f-6760-4d69-9ffd-6ba0bcdfe05c",
+                "createdAt": "2025-07-17T16:08:59.964000+03:00",
+                "message": "(service moaen-ai-backend-service) deregistered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "5b80d5ba-b8c5-46bd-908d-a3fc2a815394",
+                "createdAt": "2025-07-17T16:08:41.256000+03:00",
+                "message": "(service moaen-ai-backend-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:eu-central-1:205979660707:targetgroup/moaen-ai-backend-tg/04e4d8e409dc51b9)"
+            },
+            {
+                "id": "08d9db1b-b194-418e-a426-f198d4b63ab4",
+                "createdAt": "2025-07-17T16:08:10.582000+03:00",
+                "message": "(service moaen-ai-backend-service) has started 1 tasks: (task 2512ab523f45408c90153b57e2ba3d5d)."
+            },
+            {
+                "id": "ae7cfbe2-5d59-4c3a-831e-4b49177dab0b",
+                "createdAt": "2025-07-17T16:02:57.540000+03:00",
+                "message": "(service moaen-ai-backend-service, taskSet ecs-svc/3669586102232625764) has begun draining connections on 1 tasks."
+            }
+        ],
+        "createdAt": "2025-07-07T00:04:00.475000+03:00",
+        "placementConstraints": [],
+        "placementStrategy": [],
+        "networkConfiguration": {
+            "awsvpcConfiguration": {
+                "subnets": [
+                    "subnet-0eba1d21dd56d5cc1",
+                    "subnet-07fbeff421713a656"
+                ],
+                "securityGroups": [
+                    "sg-08519e92921fd3c5b"
+                ],
+                "assignPublicIp": "DISABLED"
+            }
+        },
+        "healthCheckGracePeriodSeconds": 0,
+        "schedulingStrategy": "REPLICA",
+        "deploymentController": {
+            "type": "ECS"
+        },
+        "createdBy": "arn:aws:iam::205979660707:user/moaen_deploy",
+        "enableECSManagedTags": false,
+        "propagateTags": "NONE",
+        "enableExecuteCommand": false,
+        "availabilityZoneRebalancing": "DISABLED"
+    }
+}

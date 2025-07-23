@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 import uuid
 import json
-from multi_agent_legal import EnhancedRAGEngine, LegalReasoningResult
+
 from app.models.conversation import Conversation, Message
 from app.models.user import User
 from app.services.auth_service import AuthService
