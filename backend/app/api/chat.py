@@ -1,5 +1,5 @@
 # backend/app/api/chat.py - Complete Unified Chat API with Multi-Agent Integration
-
+from nuclear_orchestrator import NuclearLegalOrchestrator
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Query, Header
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 import json
 import uuid
 from datetime import datetime
-
+from rag_engine import rag_engine
 from app.database import get_database
 from app.dependencies.simple_auth import get_current_active_user, get_optional_current_user
 from app.services.chat_service import ChatService
@@ -19,7 +19,7 @@ from app.models.conversation import Conversation, Message
 
 # Multi-agent system availability check
 try:
-    from multi_agent_legal import EnhancedRAGEngine
+    from rag_engine import rag_engine
     MULTI_AGENT_AVAILABLE = True
     print("✅ Multi-agent system loaded in chat API")
 except ImportError as e:
@@ -296,20 +296,19 @@ async def _generate_streaming_response(
         if MULTI_AGENT_AVAILABLE:
             try:
                 user_identifier = current_user.email if current_user else f"guest_{session_id}"
-                print(f"🤖 Using multi-agent streaming for {user_identifier}")
+                print(f"🚀 Using SIMPLE RAG for {user_identifier}")
                 if not current_user:
                     print(f"🔍 GUEST DEBUG:")
                     print(f"  session_id: {session_id}")
                     print(f"  context length: {len(context)}")
                     print(f"  message_content: {message_content[:50]}...")
-                enhanced_rag = EnhancedRAGEngine()
+                
                 processing_mode = "multi_agent"
                 print(f"🔄 Starting multi-agent processing...")
-                async for chunk in enhanced_rag.ask_question_with_multi_agent(
-                    query=message_content,
-                    conversation_context=context,
-                    enable_trust_trail=enable_trust_trail
-                ):
+                async for chunk in rag_engine.ask_question_with_context_streaming(
+                query=message_content,
+                conversation_history=context
+                     ):
                     print(f"🔍 Received chunk: {chunk[:50]}...")  
                     if chunk.startswith("data: "):
                         # Parse metadata chunks
@@ -341,8 +340,8 @@ async def _generate_streaming_response(
                 
                 print(f"✅ Multi-agent streaming completed: {len(full_response)} chars")
                 
-            except Exception as multi_agent_error:
-                print(f"⚠️ Multi-agent streaming failed: {multi_agent_error}")
+            except Exception as simple_rag_error:
+                print(f"⚠️ Simple RAG failed, fallback to standard: {simple_rag_error}")
                 print(f"🔄 Falling back to standard streaming")
                 processing_mode = "fallback"
                 
@@ -515,7 +514,7 @@ async def _generate_json_response(
                     print(f"⚠️ Multi-agent ChatService method not available, using direct approach")
                     
                     # Direct multi-agent processing
-                    enhanced_rag = EnhancedRAGEngine()
+                    
                     
                     # Get conversation context
                     if conversation_id:
@@ -540,12 +539,16 @@ async def _generate_json_response(
                     # Process with multi-agent
                     chunks = []
                     metadata = {}
-                    
-                    async for chunk in enhanced_rag.ask_question_with_multi_agent(
-                        query=message_content,
-                        conversation_context=context,
-                        enable_trust_trail=enable_trust_trail
-                    ):
+                    print(f"🚀 Using SIMPLE RAG for {user_identifier}")
+                from rag_engine import rag_engine  # ADD THIS LINE
+                async for chunk in rag_engine.ask_question_with_context_streaming(
+                    query=message_content,
+                    conversation_history=context
+                ):
+                    async for chunk in rag_engine.ask_question_with_context_streaming(
+                    query=message_content,
+                    conversation_history=context
+                ):
                         if chunk.startswith("data: "):
                             try:
                                 chunk_data = json.loads(chunk[6:])
@@ -604,8 +607,8 @@ async def _generate_json_response(
                     
                     return JSONResponse(content=result)
                     
-            except Exception as multi_agent_error:
-                print(f"⚠️ Multi-agent JSON processing failed: {multi_agent_error}")
+            except Exception as simple_rag_error:
+                print(f"⚠️ Simple RAG failed, fallback to standard: {simple_rag_error}")
                 print(f"🔄 Falling back to standard processing")
         
         # Use existing ChatService for authenticated users (fallback)

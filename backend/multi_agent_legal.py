@@ -5,7 +5,11 @@ Save this as: backend/multi_agent_legal.py
 Advanced Saudi Legal AI with Trust Trail & Citation Validation
 Built for your existing FastAPI + SQLAlchemy architecture
 """
-
+from dataclasses import dataclass, asdict
+from enum import Enum
+from elite_content_merger import EliteContentMerger
+from complexity_aware_agents import ComplexityAwareAgentSystem  
+from clarification_controller import AdvancedClarificationController
 import asyncio
 import json
 import time
@@ -421,6 +425,76 @@ class LegalAgent:
         final_confidence = base_confidence + citation_boost + structure_boost - uncertainty_penalty
         return max(0.1, min(1.0, final_confidence))
 
+class IntentValidationAgent:
+    """
+    🎯 INTENT VALIDATION AGENT: Checks if initial classification matches actual query complexity
+    """
+    
+    def __init__(self, openai_client):
+        self.client = openai_client
+    
+    async def validate_intent(
+        self, 
+        original_query: str, 
+        fact_analysis: str, 
+        initial_classification: Dict[str, str]
+    ) -> Dict[str, any]:
+        """Validate if initial classification matches what fact analysis revealed"""
+        
+        validation_prompt = f"""أنت خبير في تحليل الاستفسارات القانونية المعقدة.
+
+**الاستفسار الأصلي:**
+{original_query}
+
+**التصنيف الأولي:**
+{initial_classification.get('intent', 'غير محدد')} (ثقة: {initial_classification.get('confidence', 0):.1%})
+
+**تحليل الوقائع الذي تم:**
+{fact_analysis}
+
+**مهمتك:**
+بناءً على تحليل الوقائع، هل التصنيف الأولي صحيح أم يحتاج تعديل؟
+
+أجب بـ JSON فقط:
+{{
+  "validation_result": "confirmed|modified|expanded",
+  "recommended_intents": ["intent1", "intent2"],
+  "complexity_level": "simple|complex",
+  "reasoning": "سبب التعديل",
+  "confidence": 0.9
+}}"""
+
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": validation_prompt}],
+                temperature=0.1,
+                max_tokens=300
+            )
+            
+            validation_text = response.choices[0].message.content.strip()
+            
+            import json
+            validation_result = json.loads(validation_text)
+            
+            print(f"🔍 Intent validation: {validation_result.get('validation_result')} → {validation_result.get('recommended_intents')}")
+            
+            return validation_result
+            
+        except Exception as e:
+            print(f"⚠️ Intent validation failed: {e}")
+            
+            # Smart fallback
+            return {
+                "validation_result": "confirmed",
+                "recommended_intents": [initial_classification.get('intent', 'legal_consultation')],
+                "complexity_level": "simple",
+                "reasoning": "Fallback validation",
+                "confidence": 0.7
+            }
+
+
+
 class MultiAgentLegalOrchestrator:
     """
     🧠 CORE ORCHESTRATOR: Sequential Pipeline with Smart Intent Classification
@@ -432,12 +506,17 @@ class MultiAgentLegalOrchestrator:
     - Appropriate response formatting
     """
     
-    def __init__(self, openai_client):
+    def __init__(self, openai_client):  # ← THIS IS WHERE YOU ADD STUFF
         self.client = openai_client
         self.agents = {
             agent_type: LegalAgent(agent_type, openai_client) 
             for agent_type in LegalAgentType
         }
+        self.clarification_controller = AdvancedClarificationController(openai_client)
+        self.content_merger = EliteContentMerger()
+        self.complexity_system = ComplexityAwareAgentSystem()
+        self.intent_validator = IntentValidationAgent(openai_client)
+        
 
     async def classify_intent(self, query: str, context: Optional[List[Dict]] = None) -> Dict[str, str]:
         """
@@ -624,6 +703,182 @@ class MultiAgentLegalOrchestrator:
         # Return only our dynamic prompts
         return base_prompts
     
+    def _generate_focused_prompt(self, intent: str, query: str, complexity_level: str) -> str:
+        """Generate laser-focused prompts with CTA for simple queries, detailed for complex"""
+    
+        # FOR SIMPLE QUERIES: Use ultra-focused format with CTA
+        if complexity_level == "simple":
+            
+            if intent == "penalty_explanation":
+                return f"""أنت خبير عقوبات قانونية. مهمتك: إجابة سريعة + دعوة للتفاصيل.
+
+    **قواعد صارمة:**
+    - أقصى حد: 80 كلمة
+    - العقوبة الأساسية فقط
+    - رقم للتواصل الفوري
+    - CTA واضح للتفاصيل الكاملة
+
+    **التنسيق المطلوب:**
+    ⚖️ **العقوبة الأساسية**: [المبلغ/النوع بإختصار]
+    📞 **للتسوية الفورية**: [الرقم المحدد]
+    ➡️ **للتفاصيل الكاملة وخطة العمل**: اكتب "أريد التفاصيل الكاملة"
+
+    السؤال: {query}"""
+
+            elif intent == "rights_inquiry":
+                return f"""أنت خبير حقوق قانونية. مهمتك: الحقوق الأساسية + دعوة للتفاصيل.
+
+    **قواعد صارمة:**
+    - أقصى حد: 80 كلمة
+    - أهم 2-3 حقوق فقط
+    - جهة للمطالبة
+    - CTA للدليل الكامل
+
+    **التنسيق المطلوب:**
+    🔍 **حقوقك الأساسية**: [2-3 حقوق مختصرة بنقاط]
+    📞 **للمطالبة فوراً**: [الجهة + الرقم]
+    ➡️ **للدليل الكامل وطرق المطالبة**: اكتب "أريد الدليل الكامل"
+
+    السؤال: {query}"""
+
+            elif intent == "procedure_guide":
+                return f"""أنت خبير إجراءات قانونية. مهمتك: الخطوات الأساسية + دعوة للتفاصيل.
+
+    **قواعد صارمة:**
+    - أقصى حد: 80 كلمة
+    - 3 خطوات أساسية فقط
+    - جهة للبدء
+    - CTA للدليل الشامل
+
+    **التنسيق المطلوب:**
+    📋 **الخطوات الأساسية**:
+    1️⃣ [خطوة مختصرة]
+    2️⃣ [خطوة مختصرة]  
+    3️⃣ [خطوة مختصرة]
+    📞 **ابدأ من**: [الجهة + الرقم]
+    ➡️ **للدليل الشامل والمستندات**: اكتب "أريد الدليل الشامل"
+
+    السؤال: {query}"""
+            
+            else:  # legal_consultation
+                return f"""أنت مستشار قانوني. مهمتك: إجابة سريعة + دعوة للاستشارة التفصيلية.
+
+    **قواعد صارمة:**
+    - أقصى حد: 80 كلمة
+    - رأي مختصر + خطوة واحدة
+    - جهة للتواصل
+    - CTA للاستشارة الكاملة
+
+    **التنسيق المطلوب:**
+    💡 **الرأي المختصر**: [جملة واحدة واضحة]
+    ⚡ **الخطوة التالية**: [إجراء واحد محدد]
+    📞 **للاستشارة**: [الجهة + الرقم]
+    ➡️ **للاستشارة التفصيلية**: اكتب "أريد استشارة مفصلة"
+
+    السؤال: {query}"""
+        
+        # FOR COMPLEX QUERIES: Use detailed prompts immediately
+        else:
+            
+            if intent == "legal_dispute":
+                return f"""أنت محام خبير في الدفاع القانوني. مهمتك: إنتاج خطة دفاع شاملة وعملية.
+
+    **قواعد التفصيل:**
+    - تحليل شامل: 300-500 كلمة
+    - خطة دفاع متكاملة
+    - أدلة محددة مطلوبة
+    - جدول زمني للإجراءات
+
+    **التنسيق المطلوب:**
+    🛡️ **استراتيجية الدفاع الأساسية**: [تحليل الموقف القانوني]
+    📋 **الأدلة المطلوبة**: [قائمة مفصلة بالمستندات والشهود]
+    ⚖️ **الحجج القانونية**: [النصوص والسوابق المطبقة]
+    📅 **الجدول الزمني**: [المواعيد الحرجة والمهل القانونية]
+    💰 **التكاليف المتوقعة**: [تقدير الرسوم والأتعاب]
+    📞 **الخطوات الفورية**: [ما يجب فعله خلال 24-48 ساعة]
+    🎯 **توقعات النتائج**: [احتمالات النجاح والبدائل]
+
+    السؤال: {query}"""
+
+            elif intent == "penalty_explanation":
+                return f"""أنت خبير في العقوبات القانونية. مهمتك: تحليل شامل للعقوبات مع خطة التعامل.
+
+    **قواعد التفصيل:**
+    - تحليل مفصل: 250-400 كلمة
+    - عقوبات محددة بالأرقام
+    - خطة تخفيف شاملة
+    - بدائل وحلول
+
+    **التنسيق المطلوب:**
+    ⚖️ **العقوبات المحددة**: [أنواع العقوبات بالتفصيل والأرقام]
+    📊 **تقييم المخاطر**: [احتمالات تطبيق كل عقوبة]
+    📋 **خطة التخفيف**: [خطوات تقليل العقوبات]
+    💰 **التكاليف المالية**: [حسابات دقيقة للغرامات والرسوم]
+    ⏰ **المهل الزمنية**: [المواعيد الحرجة للاستجابة]
+    📞 **جهات التواصل**: [أرقام محددة لكل إجراء]
+    🎯 **السيناريوهات المختلفة**: [أفضل حالة وأسوأ حالة]
+
+    السؤال: {query}"""
+
+            elif intent == "rights_inquiry":
+                return f"""أنت خبير في الحقوق القانونية. مهمتك: دليل شامل للحقوق مع آليات الحماية.
+
+    **قواعد التفصيل:**
+    - دليل مفصل: 300-450 كلمة
+    - حقوق محددة بالنصوص
+    - آليات حماية عملية
+    - خطوات المطالبة
+
+    **التنسيق المطلوب:**
+    🔍 **حقوقك المفصلة**: [قائمة شاملة مع المراجع القانونية]
+    ⚖️ **الأساس القانوني**: [النصوص والمواد المطبقة]
+    🛡️ **آليات الحماية**: [الجهات والإجراءات المتاحة]
+    📋 **خطوات المطالبة**: [دليل عملي مرحلي]
+    💰 **التكاليف والرسوم**: [تكلفة المطالبة بكل حق]
+    ⏰ **المهل القانونية**: [مواعيد المطالبة والتقادم]
+    📞 **جهات التواصل**: [معلومات تفصيلية للجهات المختصة]
+
+    السؤال: {query}"""
+
+            elif intent == "procedure_guide":
+                return f"""أنت خبير في الإجراءات القانونية. مهمتك: دليل تفصيلي شامل للإجراءات.
+
+    **قواعد التفصيل:**
+    - دليل شامل: 350-500 كلمة
+    - خطوات مفصلة بالتسلسل
+    - مستندات ومتطلبات كاملة
+    - تكاليف ومواعيد دقيقة
+
+    **التنسيق المطلوب:**
+    📋 **الإجراءات التفصيلية**: [خطوات مرقمة مع التفاصيل الكاملة]
+    📄 **المستندات المطلوبة**: [قائمة شاملة مع مصادر الحصول]
+    💰 **التكاليف التفصيلية**: [رسوم كل مرحلة ومصاريف إضافية]
+    ⏰ **الجدول الزمني**: [مدة كل إجراء والمواعيد الحرجة]
+    🏛️ **الجهات المختصة**: [معلومات تفصيلية وأرقام التواصل]
+    ⚠️ **تحذيرات مهمة**: [أخطاء شائعة وكيفية تجنبها]
+    🎯 **نصائح للنجاح**: [إرشادات عملية لضمان قبول الطلب]
+
+    السؤال: {query}"""
+
+            else:  # legal_consultation - complex
+                return f"""أنت مستشار قانوني خبير. مهمتك: استشارة قانونية شاملة ومتخصصة.
+
+    **قواعد التفصيل:**
+    - استشارة شاملة: 300-450 كلمة
+    - تحليل قانوني متعمق
+    - خيارات متعددة
+    - توصيات محددة
+
+    **التنسيق المطلوب:**
+    💡 **التحليل القانوني**: [تحليل شامل للموقف القانوني]
+    ⚖️ **الخيارات المتاحة**: [البدائل القانونية مع مزايا وعيوب كل خيار]
+    📊 **تقييم المخاطر**: [تحليل المخاطر لكل خيار]
+    📋 **التوصيات**: [أفضل مسار عمل مع المبررات]
+    💰 **اعتبارات التكلفة**: [تقدير تكاليف كل خيار]
+    ⏰ **الإطار الزمني**: [جدول زمني للتنفيذ]
+    📞 **الخطوات التالية**: [إجراءات محددة للبدء]
+
+    السؤال: {query}"""
 
     async def _enhanced_legal_research_with_rag(self, query: str, context: Optional[str] = None) -> AsyncIterator[str]:
         """Enhanced legal research using RAG + AI reasoning"""
@@ -723,45 +978,132 @@ class MultiAgentLegalOrchestrator:
             
             fact_content = ''.join(fact_chunks)
             yield "\n\n"
-            
+
+            # 🔍 NEW STEP 2.5: INTENT VALIDATION (ADAPTIVE FLOW!)
+            print("🔍 Step 2.5: Validating intent based on fact analysis...")
+            yield "🔍 **التحقق من دقة التصنيف**\n\n"
+
+            # Validate if our initial classification matches the actual query complexity
+            validation_result = await self.intent_validator.validate_intent(
+                original_query=query,
+                fact_analysis=fact_content,
+                initial_classification=intent_classification
+            )
+
+            # Handle validation results
+            if validation_result['validation_result'] == 'modified':
+                # Intent changed completely
+                intent = validation_result['recommended_intents'][0]
+                yield f"🔄 **تم تعديل التصنيف إلى:** {intent}\n\n"
+                print(f"🔄 Intent changed: {intent_classification.get('intent')} → {intent}")
+                
+            elif validation_result['validation_result'] == 'expanded':
+                # Multiple intents detected
+                yield f"🎯 **تم اكتشاف موضوعات متعددة:** {', '.join(validation_result['recommended_intents'])}\n\n"
+                print(f"🎯 Multi-intent detected: {validation_result['recommended_intents']}")
+                
+            elif validation_result['validation_result'] == 'confirmed':
+                # Original classification was correct
+                yield "✅ **تم تأكيد التصنيف الأصلي**\n\n"
+                print(f"✅ Intent confirmed: {intent}")
+
+            # Update intent and workflow based on validation
+            recommended_intents = validation_result['recommended_intents']
+            complexity_level = validation_result['complexity_level']
+
             # 📚 STEP 3: ENHANCED LEGAL RESEARCH (RAG + AI)
-            print("📚 Step 2: Researching legal precedents with RAG...")
+            print("📚 Step 3: Researching legal precedents with RAG...")
 
-            if intent == 'rights_inquiry':
-                yield "الأسس القانونية لحقوقك:\n\n"
-            elif intent == 'procedure_guide':
-                yield "الإطار القانوني للإجراءات:\n\n"
-            elif intent == 'legal_dispute':
-                yield "السوابق القضائية ذات الصلة:\n\n"
+            # 🎯 ADAPTIVE WORKFLOW EXECUTION
+            research_content = ""
+
+            if len(recommended_intents) > 1:
+                # Multi-intent processing
+                for intent_type in recommended_intents:
+                    yield f"\n## 📚 {intent_type.replace('_', ' ').title()}\n\n"
+                    
+                    # Research specific to this intent
+                    research_chunks = []
+                    async for chunk in self._enhanced_legal_research_with_rag(f"{query} - {intent_type}", context_summary):
+                        research_chunks.append(chunk)
+                        yield chunk
+                    
+                    research_content += ''.join(research_chunks) + "\n\n"
             else:
-                yield "المراجع القانونية ذات الصلة:\n\n"
+                # Single intent processing
+                intent = recommended_intents[0]
+                
+                if intent == 'penalty_explanation':
+                    yield "⚖️ **العقوبات والجزاءات القانونية:**\n\n"
+                elif intent == 'rights_inquiry':
+                    yield "🔍 **الحقوق القانونية المكفولة:**\n\n"
+                elif intent == 'procedure_guide':
+                    yield "📋 **الإجراءات المطلوبة:**\n\n"
+                elif intent == 'legal_dispute':
+                    yield "⚖️ **تحليل النزاع القانوني:**\n\n"
+                else:
+                    yield "💡 **الاستشارة القانونية:**\n\n"
 
-            # 🚀 ENHANCED: Use RAG + AI for legal research
-            research_chunks = []
-            async for chunk in self._enhanced_legal_research_with_rag(query, context_summary):
-                research_chunks.append(chunk)
-                yield chunk
-            
-            research_content = ''.join(research_chunks)
+                # Single research pass
+                research_chunks = []
+                async for chunk in self._enhanced_legal_research_with_rag(query, context_summary):
+                    research_chunks.append(chunk)
+                    yield chunk
+                
+                research_content = ''.join(research_chunks)
+
             yield "\n\n"
+
             
-            # 🏗️ STEP 4: DOCUMENT DRAFTING
-            print("📝 Step 3: Drafting legal response...")
             
-            # Pass intent information to the document drafter
-            final_input = f"Intent: {intent}\nConfidence: {confidence}\nQuery: {query}"
-            
-            # Collect draft content for citation validation
+            # 🏗️ STEP 4: FOCUSED RESPONSE GENERATION
+            print("📝 Step 3: Generating focused legal response...")
+
+            # Generate laser-focused prompt based on intent
+            focused_prompt = self._generate_focused_prompt(recommended_intents[0], query, complexity_level)
+
+            # Override document drafter prompt temporarily
+            original_prompt = self.agents[LegalAgentType.DOCUMENT_DRAFTER].system_prompts[LegalAgentType.DOCUMENT_DRAFTER]
+            self.agents[LegalAgentType.DOCUMENT_DRAFTER].system_prompts[LegalAgentType.DOCUMENT_DRAFTER] = focused_prompt
+
+            # Generate focused response
             draft_chunks = []
-            async for chunk in self.agents[LegalAgentType.DOCUMENT_DRAFTER].process_streaming(
-                final_input, context_summary
-            ):
+            async for chunk in self.agents[LegalAgentType.DOCUMENT_DRAFTER].process_streaming(query, research_content):
                 draft_chunks.append(chunk)
                 yield chunk
+
+            # Restore original prompt
+            self.agents[LegalAgentType.DOCUMENT_DRAFTER].system_prompts[LegalAgentType.DOCUMENT_DRAFTER] = original_prompt
             
             draft_content = ''.join(draft_chunks)
             yield "\n\n"
-            
+
+            # 🎯 STEP 4.5: INTELLIGENT CONTENT MERGING (for multi-intent)
+            if len(recommended_intents) > 1:
+                print("🔄 Step 4.5: Merging multi-intent content...")
+                yield "🔄 **دمج المحتوى المتعدد بذكاء...**\n\n"
+                
+                # Prepare content for merging
+                intent_outputs = {}
+                for i, intent_type in enumerate(recommended_intents):
+                    intent_outputs[intent_type] = f"Intent {i+1}: {draft_content}"
+                
+                # Use content merger for deduplication and professional formatting
+                try:
+                    final_merged_content = self.content_merger.merge_multi_intent_outputs(
+                        intent_outputs=intent_outputs,
+                        original_query=query,
+                        complexity_level=complexity_level
+                    )
+                    
+                    yield "✅ **المحتوى المدمج:**\n\n"
+                    yield final_merged_content
+                    yield "\n\n"
+                    
+                except Exception as e:
+                    print(f"⚠️ Content merging failed: {e}")
+                    yield "⚠️ **تم استخدام التنسيق الأساسي**\n\n"
+
             # 🔍 STEP 5: CITATION VALIDATION (NEW!)
             print("🔍 Step 4: Validating citations and legal references...")
             yield "🔍 **التحقق من صحة المراجع القانونية**\n\n"
@@ -930,6 +1272,10 @@ class MultiAgentLegalOrchestrator:
             trust_trail_enabled=False,
             citations_summary=[]
         )
+    
+
+
+    
 
 class EnhancedRAGEngine:
     """
@@ -1008,31 +1354,72 @@ class EnhancedRAGEngine:
                 yield chunk
                 await asyncio.sleep(0.03)
 
-# Test function for debugging
-async def test_multi_agent():
-    """Test function to verify multi-agent system works"""
+async def test_nuclear_system():
+    """Test function to verify nuclear system works - GUARANTEED NO BLOAT"""
     try:
-        enhanced_rag = EnhancedRAGEngine()
+        # Create OpenAI client directly
+        import os
+        from openai import AsyncOpenAI
+        from dotenv import load_dotenv
+        
+        load_dotenv(".env")
+        
+        # Use the same client setup as your rag_engine
+        OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+        DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+        AI_PROVIDER = os.getenv("AI_PROVIDER", "openai")
+        
+        if AI_PROVIDER == "openai" and OPENAI_API_KEY:
+            openai_client = AsyncOpenAI(
+                api_key=OPENAI_API_KEY,
+                timeout=60.0,
+                max_retries=2
+            )
+        elif DEEPSEEK_API_KEY:
+            openai_client = AsyncOpenAI(
+                api_key=DEEPSEEK_API_KEY,
+                base_url="https://api.deepseek.com/v1",
+                timeout=60.0,
+                max_retries=2
+            )
+        else:
+            raise ValueError("❌ No API key available")
+        
+        from nuclear_orchestrator import NuclearLegalOrchestrator
+        nuclear_orchestrator = NuclearLegalOrchestrator(openai_client)
         
         query = "موظف تم فصله بدون مبرر، ما حقوقه؟"
-        print(f"🧪 Testing multi-agent with query: {query}")
+        print(f"🚀 Testing NUCLEAR system with query: {query}")
+        print("="*60)
         
         response_chunks = []
-        async for chunk in enhanced_rag.ask_question_with_multi_agent(
+        async for chunk in nuclear_orchestrator.nuclear_process_query(
             query=query,
-            enable_trust_trail=True
+            conversation_context=None
         ):
             response_chunks.append(chunk)
             print(chunk, end="", flush=True)
         
-        print(f"\n✅ Test completed. Total chunks: {len(response_chunks)}")
+        print("\n" + "="*60)
+        print(f"✅ NUCLEAR Test completed. Total chunks: {len(response_chunks)}")
+        
+        # Show nuclear metrics
+        metrics = nuclear_orchestrator.get_nuclear_metrics()
+        print(f"📊 NUCLEAR METRICS:")
+        print(f"   Word compliance: {metrics['word_limit_compliance']:.1%}")
+        print(f"   CTA compliance: {metrics['cta_compliance']:.1%}")
+        print(f"   Processing time: {metrics['average_processing_time_ms']}ms")
+        print(f"   Overall score: {metrics['overall_compliance_score']:.1%}")
+        
         return True
         
     except Exception as e:
-        print(f"❌ Test failed: {e}")
+        print(f"❌ Nuclear test failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 if __name__ == "__main__":
-    # Run test when file is executed directly
+    # Run nuclear test when file is executed directly
     import asyncio
-    asyncio.run(test_multi_agent())
+    asyncio.run(test_nuclear_system())

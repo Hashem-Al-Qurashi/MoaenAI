@@ -2,13 +2,14 @@
 SQLite Vector Store Implementation
 File-based vector storage perfect for development and small-scale production
 """
-
+import pickle
 import json
 import sqlite3
 import aiosqlite
 import numpy as np
 from pathlib import Path
 from typing import List, Dict, Optional, Any
+from app.legal_reasoning.ai_domain_classifier import AIDomainClassifier
 from datetime import datetime
 import logging
 
@@ -124,48 +125,110 @@ class SqliteVectorStore(VectorStore):
             return False
     
     async def search_similar(
-        self, 
-        query_vector: List[float], 
-        top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[SearchResult]:
-        """Search for similar chunks using cosine similarity"""
+    self, 
+    query_vector: List[float], 
+    top_k: int = 5,
+    filters: Optional[Dict[str, Any]] = None,
+    query_text: Optional[str] = None,
+    openai_client: Optional[Any] = None
+) -> List[SearchResult]:
+        """
+        Search for similar chunks using AI domain classification + cosine similarity
+        Now with intelligent domain filtering for better Arabic legal search
+        """
         if not self.initialized:
             await self.initialize()
-        
+            
         try:
             async with aiosqlite.connect(self.db_path) as db:
-                # Get all chunks with embeddings
-                query = "SELECT id, content, title, embedding, metadata FROM chunks WHERE embedding IS NOT NULL"
-                params = []
+                # Step 1: AI Domain Classification (if query text provided)
+                domain_filter_sql = "1=1"  # Default: no filter
+                # Debug the actual parameter values
+                print(f"🚨 PARAMETER DEBUG:")
+                print(f"  query_text: {repr(query_text)}")
+                print(f"  query_text type: {type(query_text)}")
+                print(f"  openai_client: {repr(openai_client)}")
+                print(f"  openai_client type: {type(openai_client)}")
+                print(f"  Condition result: {bool(query_text and openai_client)}")
+                if query_text and openai_client:
+                    print(f"🔥 DEBUG A: query_text exists: {bool(query_text)}")
+                    print(f"🔥 DEBUG B: openai_client exists: {bool(openai_client)}")
+                    try:
+                        from app.legal_reasoning.ai_domain_classifier import AIDomainClassifier
+                        classifier = AIDomainClassifier(openai_client)
+                        print(f"🔥 DEBUG C: AIDomainClassifier created successfully")
+                        # Get AI domain classification
+                        classification = await classifier.classify_query(query_text)
+                        print(f"🔥 DEBUG D: Classification result: {classification}")
+                        domain = classification["domain"]
+                        confidence = classification["confidence"]
+                        print(f"🔥 DEBUG E: Domain: {domain}, Confidence: {confidence}")
+                        
+                        # Use domain filter if confidence is high enough
+                        if confidence >= 0.8:
+                            print(f"🔥 DEBUG F: Confidence >= 0.8, generating filter...")
+                            domain_filter_sql = classifier.get_domain_filter_sql(domain)
+                            print(f"🔥 DEBUG G: Generated filter: {domain_filter_sql}")
+                            logger.info(f"🎯 AI classified as {domain.value} (confidence: {confidence:.2f})")
+                            logger.info(f"📋 Domain filter: {domain_filter_sql[:100]}...")
+                        else:
+                            print(f"🔥 DEBUG H: Confidence too low ({confidence}), using default filter")
+                            logger.info(f"⚠️ Low confidence ({confidence:.2f}), searching all documents")
+                            
+                    except Exception as e:
+                        print(f"🚨 DOMAIN CLASSIFICATION EXCEPTION: {e}")
+                        print(f"🚨 Exception type: {type(e)}")
+                        import traceback
+                        print(f"🚨 Full traceback: {traceback.format_exc()}")
+                        logger.warning(f"AI domain classification failed: {e}, using all documents")
+                
+                # Step 2: Get domain-filtered chunks with embeddings
+                base_query = """
+                    SELECT id, content, title, embedding, metadata 
+                    FROM chunks 
+                    WHERE embedding IS NOT NULL
+                """
+                
+                # Add domain filter
+                print(f"🔥 FILTER DEBUG: domain_filter_sql = '{domain_filter_sql}'")
+                print(f"🔥 FILTER DEBUG: domain_filter_sql != '1=1' = {domain_filter_sql != '1=1'}")
+                if domain_filter_sql != "1=1":
+                    query_sql = f"{base_query} AND ({domain_filter_sql})"
+                else:
+                    query_sql = base_query
                 
                 # Add basic metadata filters if provided
+                params = []
                 if filters:
                     for key, value in filters.items():
-                        # Simple metadata filtering - look for key in JSON
-                        query += " AND metadata LIKE ?"
+                        query_sql += " AND metadata LIKE ?"
                         params.append(f'%"{key}":"{value}"%')
-                
-                async with db.execute(query, params) as cursor:
+
+
+                print(f"🔍 EXECUTING SQL: {query_sql[:200]}...")
+                async with db.execute(query_sql, params) as cursor:
                     rows = await cursor.fetchall()
+                    
+                    if not rows:
+                        logger.warning("No chunks found with current filters")
+                        return []
+                    
+                    logger.info(f"Domain filtering returned {len(rows)} candidate documents")
                 
-                if not rows:
-                    logger.warning("No chunks with embeddings found")
-                    return []
-                
-                # Calculate similarities
+                # Step 3: Calculate similarities
                 results = []
                 query_vector_np = np.array(query_vector)
+                processed_count = 0
                 
                 for row in rows:
-                    chunk_id, content, title, embedding_json, metadata_json = row
+                    chunk_id, content, title, embedding_data, metadata_json = row
                     
-                    # Parse embedding
                     try:
-                        chunk_embedding = json.loads(embedding_json) if embedding_json else None
+                        # Unpickle the stored embedding
+                        chunk_embedding = pickle.loads(embedding_data) if embedding_data else None
                         if not chunk_embedding:
                             continue
-                            
+                        
                         chunk_embedding_np = np.array(chunk_embedding)
                         
                         # Calculate cosine similarity
@@ -188,20 +251,24 @@ class SqliteVectorStore(VectorStore):
                             similarity_score=similarity
                         ))
                         
-                    except (json.JSONDecodeError, ValueError) as e:
+                        processed_count += 1
+                        
+                    except Exception as e:
                         logger.warning(f"Failed to process chunk {chunk_id}: {e}")
                         continue
                 
-                # Sort by similarity (highest first) and return top_k
+                # Step 4: Sort by similarity and return top_k
                 results.sort(key=lambda x: x.similarity_score, reverse=True)
                 
-                logger.info(f"Found {len(results)} similar chunks, returning top {top_k}")
+                logger.info(f"Successfully processed {processed_count} chunks, returning top {top_k}")
+                logger.info(f"Top result similarity: {results[0].similarity_score:.3f}" if results else "No results")
+                
                 return results[:top_k]
                 
         except Exception as e:
             logger.error(f"Failed to search similar chunks: {e}")
             return []
-    
+
     async def get_chunk_by_id(self, chunk_id: str) -> Optional[Chunk]:
         """Retrieve a specific chunk by ID"""
         if not self.initialized:

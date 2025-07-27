@@ -7,7 +7,7 @@ import type {
   Consultation 
 } from '../types/auth';
 
-const API_BASE_URL = 'https://d2c979d13bkvf4.cloudfront.net';
+const API_BASE_URL = 'http://localhost:8000/';
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -268,6 +268,8 @@ async sendMessage(message: string, conversationId?: string, sessionId?: string):
     return response.data;
   },
   // Add this method to your existing chatAPI object (after sendMessage):
+// Replace your sendMessageStreaming function with this fixed version:
+
 async sendMessageStreaming(
   message: string,
   conversationId?: string,
@@ -288,7 +290,8 @@ async sendMessageStreaming(
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/chat/message`, {
+    // ✅ FIXED: Removed conflicting headers, let browser set Content-Type for FormData
+    const response = await fetch(`${API_BASE_URL}api/chat/message`, {  // ← Removed double slash
       method: 'POST',
       headers: {
         'Accept': 'text/event-stream',
@@ -298,6 +301,8 @@ async sendMessageStreaming(
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ HTTP ${response.status}:`, errorText);
       throw new Error(`HTTP ${response.status}`);
     }
 
@@ -340,6 +345,7 @@ async sendMessageStreaming(
       }
     }
   } catch (error) {
+    console.error('❌ Streaming failed:', error);
     if (onError) {
       onError(error instanceof Error ? error.message : 'Streaming failed');
     }

@@ -1,59 +1,194 @@
 """
-Legal Reasoning RAG Engine - Production Ready
-Zero tech debt, clean architecture, smart legal reasoning
-Built for Saudi legal AI with proper issue analysis and contextual prompting
+Intelligent RAG Engine with AI-Powered Intent Classification
+No hard-coding - AI handles all classification and prompt selection
+Natural conversations + Smart document retrieval + Dynamic prompt selection
 """
-from app.legal_reasoning.document_type_analyzer import LegalDocumentTypeAnalyzer, DocumentType
-from app.legal_reasoning.document_generator import LegalDocumentGenerator
+
 import os
+import logging
 from datetime import datetime
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
-import markdown
-from typing import List, Dict, Optional, Any, AsyncIterator
-import re
-import logging
-from app.legal_reasoning.memo_processor import LegalMemoProcessor
-# Import legal reasoning components
-from app.legal_reasoning.issue_analyzer import EnhancedLegalIssueAnalyzer, LegalIssue
-from app.core.prompt_controller import MasterPromptController, get_master_controller
-# Import clean architecture components
+from typing import List, Dict, Optional, AsyncIterator
+import json
+
+# Import the smart database components from old RAG
 from app.storage.vector_store import VectorStore, Chunk
 from app.storage.sqlite_store import SqliteVectorStore
 
 # Load environment variables
-try:
-    load_dotenv(".env")
-except:
-    pass
+load_dotenv(".env")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# API key configuration
+# Simple API key configuration
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Initialize AI clients - prioritize OpenAI, fallback to DeepSeek
+# Initialize AI client - prioritize OpenAI, fallback to DeepSeek
 if OPENAI_API_KEY:
     ai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     ai_model = "gpt-4o"
-    print("✅ Using OpenAI for async AI and embeddings")
+    classification_model = "gpt-4o-mini"  # Small model for classification
+    print("✅ Using OpenAI for intelligent legal AI with classification")
 elif DEEPSEEK_API_KEY:
     ai_client = AsyncOpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com/v1")
     ai_model = "deepseek-chat"
-    print("✅ Using DeepSeek for async AI and embeddings")
+    classification_model = "deepseek-chat"
+    print("✅ Using DeepSeek for intelligent legal AI with classification")
 else:
-    raise ValueError("❌ Either OPENAI_API_KEY or DEEPSEEK_API_KEY must be provided in environment")
+    raise ValueError("❌ Either OPENAI_API_KEY or DEEPSEEK_API_KEY must be provided")
 
 
+# DYNAMIC PROMPTS - NO HARD-CODING OF CATEGORIES
+CLASSIFICATION_PROMPT = """أنت خبير في تحليل الاستفسارات القانونية. حلل هذا السؤال وحدد نوع الاستشارة المطلوبة.
 
+السؤال: {query}
 
+ردك يجب أن يكون JSON فقط بهذا التنسيق:
+{{
+    "category": "GENERAL_QUESTION | ACTIVE_DISPUTE | PLANNING_ACTION",
+    "confidence": 0.95,
+    "reasoning": "سبب التصنيف"
+}}
+
+التصنيفات:
+- GENERAL_QUESTION: سؤال عام للمعرفة ("ما هي", "كيف", "هل يجوز")
+- ACTIVE_DISPUTE: مشكلة قانونية نشطة تحتاج دفاع ("رفع علي دعوى", "خصمي يدعي", "كيف أرد")
+- PLANNING_ACTION: يخطط لاتخاذ إجراء قانوني ("أريد مقاضاة", "هل أرفع دعوى", "كيف أرفع قضية")
+
+ردك JSON فقط، لا نص إضافي."""
+
+# DYNAMIC PROMPT TEMPLATES - AI CHOOSES THE RIGHT PERSONALITY
+PROMPT_TEMPLATES = {
+    "GENERAL_QUESTION": """أنت مستشار قانوني سعودي ودود ومفيد.
+
+🎯 مهمتك:
+- مساعدة المستخدمين بوضوح وبساطة
+- شرح الحقوق والقوانين بطريقة مفهومة  
+- إعطاء نصائح عملية قابلة للتطبيق
+- طرح أسئلة للفهم أكثر عند الحاجة
+
+⚖️ منهجك:
+- ابدأ بإجابة مباشرة على السؤال
+- اذكر المصدر القانوني بطبيعية: "حسب نظام العمل، المادة 12 , لابد من ذكر المصدر اذا وجد"
+- قدم خطوات عملية واضحة
+- لا تعقد الأمور بلا داع
+
+🔥 النهاية الذكية:
+- اقترح الخطوة التالية المنطقية للمستخدم
+- كن محدداً بناءً على حالته
+
+🚫 تجنب:
+- اللغة المعقدة والمصطلحات الصعبة
+- الرموز التعبيرية المفرطة  
+- القوالب الجاهزة
+- الإطالة بلا فائدة
+
+تحدث كمستشار محترف يهتم بمساعدة الناس فهم حقوقهم.""",
+
+    "ACTIVE_DISPUTE": """
+
+# ACTIVE_DISPUTE - Reasoning Model
+
+## Core Legal Identity
+أنت محامٍ سعودي محترف، متمرس في الدفاع المدني، تمتلك قدرة استثنائية على تحليل الدعاوى وكشف نقاط ضعفها. تتعامل مع كل قضية كطبيب جراح - بدقة ولا مجال للخطأ.
+
+## Legal Philosophy
+- الأدلة تتحدث، ليس العواطف
+- كل ادعاء يحتاج إثبات قاطع
+- القانون أداة للعدالة، ليس للاستغلال
+- الخصم بريء حتى يثبت براءة ادعائه
+
+## Reasoning Framework
+
+### Primary Analysis Mode
+اسأل نفسك دائماً: "ما هو أضعف عنصر في هذه الدعوى؟" ثم ابني تحليلك حول هذا العنصر.
+
+### Legal Investigation Process
+1. **حلل الأدلة**: ما المفقود؟ ما المشكوك فيه؟ ما المتناقض؟
+2. **اختبر المنطق القانوني**: هل الادعاء منطقي قانونياً؟
+3. **فحص السوابق**: كيف ينظر القضاء لحالات مماثلة؟
+4. **تقييم النتائج**: ما هي أقوى استراتيجية دفاع؟
+
+## Prohibited Approaches
+🚫 **ممنوع نهائياً:**
+- التبع الأعمى لقوالب جاهزة
+- افتراض حسن نية الخصم
+- الاعتماد على الاحتمالات ("ربما"، "قد يكون")
+- اقتراح اليمين الحاسمة
+- النبرة العاطفية أو الهجومية غير المبررة
+- نسخ مواد القانون دون ربطها بالواقع
+
+## Dynamic Response Strategy
+
+### Natural Flow Principle
+دع كل قضية تحدد طريقة تحليلها:
+- قضية ضعيفة الأدلة؟ ابدأ بتفكيك الأدلة
+- قضية متناقضة؟ ابدأ بكشف التناقضات  
+- قضية مفتقرة للسند القانوني؟ ابدأ بالقانون
+- قضية واضحة الكيدية؟ ابدأ بكشف سوء النية
+
+### Adaptive Structure
+لا تلتزم بهيكل ثابت. استخدم ما يناسب القضية:
+- تحليل مباشر للأدلة
+- مناقشة قانونية متعمقة  
+- استراتيجية إجرائية
+- تحليل نفسي لدوافع المدعي
+
+## Professional Standards
+
+### Tone Guidelines
+- **حازم دون عدوانية**: كن واثقاً، ليس متنمراً
+- **ذكي دون تعالي**: أظهر خبرتك، لا غرورك
+- **ساخر بلباقة**: الذكاء يتحدث بهدوء
+
+### Credibility Markers
+- استشهد بالقانون عند الحاجة، لا للإعجاب
+- اربط كل نقطة قانونية بالواقع مباشرة
+- قدم حلول عملية، ليس فلسفة قانونية
+
+## Closing Strategy
+اختتم بطريقة طبيعية تناسب السياق:
+- اقتراح عملي محدد
+- سؤال استراتيجي
+- ملخص قوي للموقف
+- خطوة تالية واضحة
+
+## The Ultimate Test
+بعد كتابة تحليلك، اسأل نفسك:
+"هل يبدو هذا وكأنني أحلل قضية حقيقية لموكل حقيقي، أم وكأنني أملأ استمارة؟"
+
+إذا كان الجواب الثاني، أعد الكتابة.
+""",
+
+    "PLANNING_ACTION": """أنت مستشار قانوني استراتيجي متخصص في التخطيط للإجراءات القانونية.
+
+🎯 مهمتك:
+- تقييم جدوى الإجراء القانوني المطلوب
+- وضع استراتيجية واضحة خطوة بخطوة
+- تحليل المخاطر والعوائد بصراحة
+- إرشاد المستخدم للقرار الصحيح
+
+⚖️ منهجك:
+- قيم الموقف القانوني بموضوعية
+- اشرح الخيارات المتاحة بوضوح
+- حدد الإجراءات المطلوبة والتكاليف المتوقعة
+- انصح بأفضل مسار بناءً على الحقائق
+
+🔥 التركيز:
+- خطة عمل واضحة وقابلة للتطبيق
+- توقعات واقعية للنتائج
+- بدائل إذا فشل المسار الأساسي
+
+تحدث كمستشار استراتيجي يساعد في اتخاذ القرارات الذكية."""
+}
 
 
 class StorageFactory:
-    """Factory for creating storage backends based on configuration"""
+    """Factory for creating storage backends"""
     
     @staticmethod
     def create_storage() -> VectorStore:
@@ -63,988 +198,335 @@ class StorageFactory:
         if storage_type == "sqlite":
             db_path = os.getenv("SQLITE_DB_PATH", "data/vectors.db")
             return SqliteVectorStore(db_path)
-        elif storage_type == "qdrant":
-            # Future: QdrantVectorStore implementation
-            raise NotImplementedError("Qdrant storage not yet implemented")
         else:
             raise ValueError(f"Unknown storage type: {storage_type}")
 
 
 class DocumentRetriever:
-    """
-    Pure database-driven document retriever
-    No hardcoded documents - everything comes from storage
-    """
+    """Smart document retriever - gets relevant Saudi legal documents from database"""
     
     def __init__(self, storage: VectorStore, ai_client: AsyncOpenAI):
-        """
-        Initialize retriever with storage backend
-        
-        Args:
-            storage: Vector storage implementation
-            ai_client: AI client for query embeddings
-        """
         self.storage = storage
         self.ai_client = ai_client
         self.initialized = False
-        
         logger.info(f"DocumentRetriever initialized with {type(storage).__name__}")
     
     async def initialize(self) -> None:
-        """Initialize storage backend (no document loading)"""
+        """Initialize storage backend"""
         if self.initialized:
             return
         
         try:
-            # Initialize storage backend
             await self.storage.initialize()
-            
-            # Check current document count
             stats = await self.storage.get_stats()
             logger.info(f"Storage initialized with {stats.total_chunks} existing documents")
-            
             self.initialized = True
-            
         except Exception as e:
             logger.error(f"Failed to initialize retriever: {e}")
             raise
     
-    async def retrieve_relevant_chunks(self, query: str, legal_issue: LegalIssue, top_k: int = 2) -> List[Chunk]:
+    async def get_relevant_documents(self, query: str, top_k: int = 3, user_intent: str = "GENERAL_QUESTION") -> List[Chunk]:
         """
-        Retrieve relevant chunks from database with legal context
-        
-        Args:
-            query: Search query
-            legal_issue: Analyzed legal issue for contextual retrieval
-            top_k: Number of results to return
-            
-        Returns:
-            List of relevant Chunk objects from database
+        Enhanced document retrieval with dual-stage filtering:
+        Stage 1: Content-based retrieval (existing system)  
+        Stage 2: Style-based filtering using AI
         """
-        # Ensure initialization
         if not self.initialized:
             await self.initialize()
         
         try:
-            # Check if we have any documents in storage
             stats = await self.storage.get_stats()
             if stats.total_chunks == 0:
-                logger.warning("No documents found in storage")
+                logger.info("No documents found in storage - using general knowledge")
                 return []
             
-            logger.info(f"Searching {stats.total_chunks} documents for: '{query[:50]}...'")
-            logger.info(f"Legal context: {legal_issue.legal_domain} | {legal_issue.issue_type}")
+            logger.info(f"🔍 Enhanced search in {stats.total_chunks} documents for: '{query[:50]}...'")
+            logger.info(f"📋 User intent: {user_intent}")
             
-            # Use hybrid search for better legal document retrieval
-            if hasattr(self.storage, 'search_hybrid'):
-                search_results = await self.storage.search_hybrid(query, top_k=top_k)
+            # Get query embedding
+            response = await self.ai_client.embeddings.create(
+                model="text-embedding-ada-002",
+                input=query
+            )
+            query_embedding = response.data[0].embedding
+            
+            # STAGE 1: Content-based retrieval (your existing system)
+            logger.info("🚀 Stage 1: Content-based document retrieval")
+            
+            # Get more candidates for style filtering (4x the requested amount)
+            expanded_top_k = min(top_k * 4, 15)  # Get more candidates but cap at 15
+            search_results = await self.storage.search_similar(
+                query_embedding, 
+                top_k=expanded_top_k, 
+                query_text=query, 
+                openai_client=self.ai_client
+            )
+            content_candidates = [result.chunk for result in search_results]
+            
+            if not content_candidates:
+                logger.info("No relevant documents found - using general knowledge")
+                return []
+            
+            logger.info(f"📊 Stage 1: Found {len(content_candidates)} content matches")
+            
+            # STAGE 2: Style-based filtering (only if we have multiple candidates)
+            if len(content_candidates) > top_k and user_intent == "ACTIVE_DISPUTE":
+                try:
+                    logger.info("🎨 Stage 2: AI-powered style filtering")
+                    
+                    # Import style classifier
+                    from app.legal_reasoning.ai_style_classifier import AIStyleClassifier
+                    style_classifier = AIStyleClassifier(self.ai_client)
+                    
+                    # Get target style for this intent
+                    target_style = style_classifier.get_style_for_intent(user_intent)
+                    logger.info(f"🎯 Target style: {target_style}")
+                    
+                    # Classify documents by style
+                    styled_documents = await style_classifier.filter_documents_by_style(
+                        content_candidates, 
+                        target_style=target_style,
+                        min_confidence=0.6  # Lower threshold for more matches
+                    )
+                    
+                    # Separate style matches from others
+                    style_matches = [doc for doc in styled_documents if doc["style_match"]]
+                    all_styled = styled_documents
+                    
+                    logger.info(f"✨ Style matches: {len(style_matches)}")
+                    
+                    # Smart selection: prioritize style matches
+                    final_documents = []
+                    
+                    if style_matches:
+                        # Add style matches first
+                        style_docs = [doc["document"] for doc in style_matches[:top_k]]
+                        final_documents.extend(style_docs)
+                        
+                        # Fill remaining with best content matches
+                        remaining = top_k - len(style_docs)
+                        if remaining > 0:
+                            other_docs = [doc["document"] for doc in all_styled 
+                                        if not doc["style_match"]][:remaining]
+                            final_documents.extend(other_docs)
+                        
+                        logger.info(f"🎯 Selected: {len([d for d in styled_documents[:len(final_documents)] if d['style_match']])} style + {len(final_documents) - len([d for d in styled_documents[:len(final_documents)] if d['style_match']])} content")
+                    else:
+                        # No style matches - use best content
+                        final_documents = [doc["document"] for doc in all_styled[:top_k]]
+                        logger.info(f"📊 No style matches - using top {len(final_documents)} content matches")
+                    
+                    relevant_chunks = final_documents[:top_k]
+                    
+                except Exception as style_error:
+                    logger.warning(f"Style filtering failed: {style_error}, using content-only")
+                    relevant_chunks = content_candidates[:top_k]
             else:
-                # Fallback to basic similarity search
-                response = await self.ai_client.embeddings.create(
-                    model="text-embedding-ada-002",
-                    input=query
-                )
-                query_embedding = response.data[0].embedding
-                search_results = await self.storage.search_similar(query_embedding, top_k=top_k)
+                # Use original content-based results for non-dispute queries or limited candidates
+                relevant_chunks = content_candidates[:top_k]
+                logger.info(f"📊 Using content-based retrieval ({user_intent})")
             
-            # Extract chunks from search results
-            relevant_chunks = [result.chunk for result in search_results]
-            
+            # Log final results (keeping your original format)
             if relevant_chunks:
                 logger.info(f"Found {len(relevant_chunks)} relevant documents:")
                 for i, chunk in enumerate(relevant_chunks):
-                    similarity = search_results[i].similarity_score
+                    # Find similarity score from original search results
+                    similarity = 0.0
+                    for result in search_results:
+                        if result.chunk.id == chunk.id:
+                            similarity = result.similarity_score
+                            break
                     logger.info(f"  {i+1}. {chunk.title[:50]}... (similarity: {similarity:.3f})")
             else:
-                logger.info("No relevant documents found")
+                logger.info("No relevant documents found - using general knowledge")
             
             return relevant_chunks
             
         except Exception as e:
-            logger.error(f"Failed to retrieve relevant chunks: {e}")
+            logger.error(f"Error retrieving documents: {e}")
             return []
+
+
+class IntentClassifier:
+    """AI-powered intent classifier - no hard-coding"""
     
-    async def get_document_count(self) -> int:
-        """Get total number of documents in storage"""
+    def __init__(self, ai_client: AsyncOpenAI, model: str):
+        self.ai_client = ai_client
+        self.model = model
+        logger.info("🧠 AI Intent Classifier initialized - zero hard-coding")
+    
+    async def classify_intent(self, query: str, conversation_history: List[Dict[str, str]] = None) -> Dict[str, any]:
+        """Use AI to classify user intent dynamically"""
         try:
-            stats = await self.storage.get_stats()
-            return stats.total_chunks
+            # Build context for better classification
+            context = ""
+            if conversation_history:
+                recent_context = conversation_history[-3:]  # Last 3 messages for context
+                context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in recent_context])
+                context = f"\n\nسياق المحادثة:\n{context}\n"
+            
+            classification_prompt = CLASSIFICATION_PROMPT.format(query=query) + context
+            
+            logger.info(f"🧠 Classifying intent for: {query[:30]}...")
+            
+            response = await self.ai_client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": classification_prompt}],
+                max_tokens=200,
+                temperature=0.1  # Low temperature for consistent classification
+            )
+            
+            # Parse AI response
+            result_text = response.choices[0].message.content.strip()
+            
+            # Clean up response (remove markdown if present)
+            if "```json" in result_text:
+                result_text = result_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in result_text:
+                result_text = result_text.split("```")[1].split("```")[0].strip()
+            
+            # Parse JSON
+            classification = json.loads(result_text)
+            
+            logger.info(f"🎯 Intent classified: {classification['category']} (confidence: {classification['confidence']:.2f})")
+            
+            # Validate classification
+            valid_categories = ["GENERAL_QUESTION", "ACTIVE_DISPUTE", "PLANNING_ACTION"]
+            if classification["category"] not in valid_categories:
+                logger.warning(f"Invalid category: {classification['category']}, defaulting to GENERAL_QUESTION")
+                classification["category"] = "GENERAL_QUESTION"
+                classification["confidence"] = 0.5
+            
+            return classification
+            
         except Exception as e:
-            logger.error(f"Error getting document count: {e}")
-            return 0
+            logger.error(f"Intent classification error: {e}")
+            # Safe fallback
+            return {
+                "category": "GENERAL_QUESTION",
+                "confidence": 0.5,
+                "reasoning": f"Classification failed: {str(e)}"
+            }
 
 
-class LegalPromptBuilder:
-    """Advanced legal prompt builder with issue-aware contextualization"""
+def format_legal_context_naturally(retrieved_chunks: List[Chunk]) -> str:
+    """Format legal documents in a natural way"""
+    if not retrieved_chunks:
+        return ""
     
-    LEGAL_SYSTEM_PROMPT = """أنت محامي سعودي خبير ومستشار قانوني متمرس مع 20 عاماً من الخبرة في النظام القانوني السعودي.
-
-تخصصاتك الأساسية:
-- القانون الجنائي والإجراءات الجزائية
-- القانون المدني والمرافعات الشرعية
-- قانون العمل والعلاقات العمالية
-- القانون التجاري والشركات
-- القانون الإداري والتنظيمي
-- قانون الأحوال الشخصية
-
-🎯 **قواعد الاستشهاد الإجبارية:**
-- يجب ذكر رقم المادة والنظام المحدد لكل نقطة قانونية
-- كل ادعاء قانوني يجب أن يبدأ بـ: "وفقاً للمادة (X) من [النظام المحدد]"
-- ممنوع استخدام العبارات العامة: "القوانين تنص", "الأنظمة تشير", "عموماً", "عادة"
-- إذا لم تجد المادة المحددة في الوثائق المرفقة، قل: "المادة غير متوفرة في الوثائق المرفقة"
-
-🚫 **عبارات محظورة تماماً:**
-- "تحددها القوانين عموماً"
-- "تنص الأنظمة عادة"
-- "القوانين السعودية تشير"
-- "وفقاً للقوانين العامة"
-- "حسب الأنظمة المعمول بها"
-
-✅ **منهجية العمل الإجبارية:**
-- تقديم مشورة قانونية عملية مع استشهاد دقيق
-- التركيز على الحلول مع ذكر المصادر القانونية المحددة
-- استخدام لغة واضحة مع الاستناد لأرقام المواد الصريحة
-- تقديم استراتيجيات قانونية محددة مبنية على نصوص واضحة
-- ربط كل نصيحة بالمادة القانونية المناسبة بالرقم والمصدر
-
-🎯 **تنسيق الاستشهاد المطلوب:**
-- "وفقاً للمادة (12) من اللوائح التنفيذية لنظام المرافعات الشرعية"
-- "بناءً على المادة (8) من نظام الإثبات"
-- "استناداً للمادة (94) من نظام الإجراءات الجزائية"
-
-⚠️ **تحذير نهائي:**
-أي إجابة تحتوي على عموميات أو عدم ذكر أرقام المواد المحددة تعتبر غير مقبولة قانونياً."""
-    
-    @classmethod
-    def get_system_prompt(cls) -> str:
-        """Get legal system prompt"""
-        return cls.LEGAL_SYSTEM_PROMPT
-    
-    @classmethod
-    def add_anti_generalization_enforcement(cls, base_prompt: str) -> str:
-        """Add final layer of anti-generalization enforcement to any prompt"""
-        
-        enforcement_layer = """
-
-🚨 **تحذير نهائي - قواعد صارمة للاستشهاد:**
-
-✅ **يجب عليك:**
-- ذكر رقم المادة والمصدر لكل ادعاء قانوني
-- استخدام تنسيق: "وفقاً للمادة (X) من [النظام المحدد]"
-- الاعتماد فقط على النصوص المرفقة أعلاه
-
-🚫 **ممنوع تماماً استخدام هذه العبارات:**
-- "تحددها القوانين عموماً"
-- "تنص الأنظمة عادة"
-- "القوانين السعودية تشير"
-- "وفقاً للقوانين العامة"
-- "حسب الأنظمة المعمول بها"
-- "القانون ينص"
-- "الأنظمة توضح"
-- "في المملكة العربية السعودية عموماً"
-
-⚠️ **إذا لم تجد المادة المحددة:**
-قل بوضوح: "المعلومة المطلوبة غير متوفرة في الوثائق القانونية المرفقة"
-
-🎯 **تذكر:** كل كلمة في إجابتك يجب أن تكون مدعومة بمادة قانونية محددة أو تصريح واضح بعدم توفر المعلومة.
-
-**أي مخالفة لهذه القواعد تعتبر خطأً قانونياً جسيماً.**"""
-
-        return base_prompt + enforcement_layer
-
-
-    @classmethod
-    def build_legal_prompt(cls, query: str, retrieved_chunks: List[Chunk], legal_issue: LegalIssue) -> str:
-        """Build contextual legal prompt based on issue analysis"""
-        
-        # Determine prompt strategy based on legal issue
-        if legal_issue.user_position == 'defendant' and legal_issue.advice_type == 'defense_strategy':
-            return cls._build_defense_strategy_prompt(query, retrieved_chunks, legal_issue)
-        
-        elif legal_issue.advice_type == 'procedural_guide':
-            return cls._build_procedural_guide_prompt(query, retrieved_chunks, legal_issue)
-        
-        elif legal_issue.advice_type == 'rights_explanation':
-            return cls._build_rights_explanation_prompt(query, retrieved_chunks, legal_issue)
-        
-        elif legal_issue.user_position == 'plaintiff':
-            return cls._build_action_strategy_prompt(query, retrieved_chunks, legal_issue)
-        
-        else:
-            return cls._build_general_advice_prompt(query, retrieved_chunks, legal_issue)
-    
-    @classmethod
-    def _build_defense_strategy_prompt(cls, query: str, retrieved_chunks: List[Chunk], legal_issue: LegalIssue) -> str:
-        """Build defense strategy prompt for defendants"""
-        
-        legal_context = cls._format_legal_context(retrieved_chunks)
-        
-        return f"""أنت محامي دفاع سعودي خبير. موكلك يواجه قضية في مجال {legal_issue.legal_domain} ويحتاج استراتيجية دفاع قوية وعملية.
-
-📚 **الأنظمة واللوائح ذات الصلة:**
-{legal_context}
-
-⚖️ **موقف الدفاع:**
-{query}
-
-**مطلوب منك كمحامي دفاع متمرس:**
-
-🎯 **الاستراتيجية الدفاعية الأساسية:**
-- حدد أقوى نقاط الدفاع بناءً على القوانين المرفقة
-- اقترح الخطة الدفاعية الأكثر فعالية لهذه القضية
-- رتب الدفوع حسب قوة التأثير والأولوية
-
-🛡️ **الدفوع القانونية المحددة:**
-- اذكر الدفوع النظامية المتاحة تفصيلياً
-- ربط كل دفع بالمواد القانونية المناسبة
-- استراتيجية تطبيق كل دفع عملياً
-
-📋 **خطة العمل الفورية:**
-- الإجراءات الواجب اتخاذها فوراً (خلال 24-48 ساعة)
-- المستندات والأدلة المطلوب جمعها بالتفصيل
-- الجدول الزمني للإجراءات والمواعيد القانونية
-
-💡 **التوصيات الاستراتيجية:**
-- نصائح تكتيكية لتقوية الموقف القانوني
-- التحذيرات من الأخطاء الشائعة
-- البدائل المتاحة في حالة فشل الدفع الأساسي
-
-تحدث كمحامي دفاع محترف يعطي نصائح مباشرة وقابلة للتطبيق فوراً."""
-
-    @classmethod
-    def _build_procedural_guide_prompt(cls, query: str, retrieved_chunks: List[Chunk], legal_issue: LegalIssue) -> str:
-        """Build procedural guide prompt"""
-        
-        legal_context = cls._format_legal_context(retrieved_chunks)
-        
-        return f"""أنت مستشار قانوني إجرائي متخصص في {legal_issue.legal_domain}. 
-
-📚 **الأنظمة واللوائح الإجرائية:**
-{legal_context}
-
-❓ **الاستفسار الإجرائي:**
-{query}
-
-**مطلوب منك كخبير إجرائي:**
-
-📋 **الدليل الإجرائي التفصيلي:**
-- اشرح كل خطوة مطلوبة بالتفصيل والترتيب الصحيح
-- حدد المواعيد والمهل القانونية بدقة
-- اذكر الرسوم والتكاليف المطلوبة إن وجدت
-- وضح الإجراءات البديلة في حالة الطوارئ
-
-📄 **قائمة المستندات الكاملة:**
-- حدد كل مستند مطلوب بدقة مع الوصف
-- اشرح كيفية الحصول على كل مستند
-- اذكر المتطلبات والشروط لكل مستند
-- حدد المستندات الاختيارية والإجبارية
-
-⚠️ **التحذيرات الإجرائية الحرجة:**
-- انبه على المخاطر الإجرائية التي قد تؤدي لرفض الطلب
-- اذكر الأخطاء الشائعة وكيفية تجنبها
-- حدد نقاط المراجعة الإجبارية قبل التقديم
-
-🕐 **الجدول الزمني والمواعيد:**
-- ضع جدولاً زمنياً واضحاً لكل إجراء
-- حدد المواعيد الحرجة التي لا يمكن تأجيلها
-- اقترح هامش أمان زمني لكل خطوة
-
-قدم دليلاً عملياً شاملاً يمكن اتباعه خطوة بخطوة بدون أخطاء."""
-
-    @classmethod
-    def _build_rights_explanation_prompt(cls, query: str, retrieved_chunks: List[Chunk], legal_issue: LegalIssue) -> str:
-        """Build rights explanation prompt"""
-        
-        legal_context = cls._format_legal_context(retrieved_chunks)
-        
-        return f"""أنت مستشار قانوني متخصص في شرح الحقوق والالتزامات في {legal_issue.legal_domain}.
-
-📚 **المراجع القانونية:**
-{legal_context}
-
-❓ **الاستفسار عن الحقوق:**
-{query}
-
-**مطلوب منك كخبير حقوقي:**
-
-⚖️ **الحقوق الأساسية:**
-- اشرح كل حق بوضوح مع الاستناد للمواد القانونية
-- حدد نطاق كل حق وحدوده القانونية
-- وضح كيفية ممارسة كل حق عملياً
-- اذكر الحقوق المطلقة والحقوق المشروطة
-
-📜 **الالتزامات المقابلة:**
-- حدد الالتزامات التي تقابل كل حق
-- اشرح عواقب عدم الوفاء بالالتزامات
-- وضح التوازن بين الحقوق والالتزامات
-
-🛡️ **آليات الحماية والإنفاذ:**
-- كيفية المطالبة بالحقوق قانونياً
-- الجهات المختصة بحماية كل حق
-- الإجراءات المتاحة في حالة انتهاك الحقوق
-- الطرق البديلة لحل النزاعات
-
-💡 **النصائح العملية:**
-- كيفية توثيق الحقوق وحمايتها
-- التحذيرات من التنازل غير المقصود عن الحقوق
-- أفضل الممارسات لضمان الحصول على الحقوق كاملة
-
-استخدم لغة واضحة ومباشرة مع أمثلة عملية من الواقع السعودي."""
-
-    @classmethod
-    def _build_action_strategy_prompt(cls, query: str, retrieved_chunks: List[Chunk], legal_issue: LegalIssue) -> str:
-        """Build action strategy prompt for plaintiffs"""
-        
-        legal_context = cls._format_legal_context(retrieved_chunks)
-        
-        return f"""أنت محامي ومستشار قانوني خبير في التقاضي والمطالبات في {legal_issue.legal_domain}.
-
-📚 **الأساس القانوني:**
-{legal_context}
-
-⚖️ **موقف المطالبة:**
-{query}
-
-**مطلوب منك كمحامي تقاضي متمرس:**
-
-🎯 **استراتيجية المطالبة:**
-- حدد أقوى الأسس القانونية للمطالبة
-- اقترح الاستراتيجية الأكثر فعالية لتحقيق النتيجة المطلوبة
-- رتب الحجج القانونية حسب قوة التأثير
-
-📋 **خطة التقاضي:**
-- الإجراءات المطلوبة لرفع الدعوى أو المطالبة
-- المستندات والأدلة الواجب جمعها
-- أفضل توقيت لاتخاذ الإجراءات القانونية
-
-💪 **تقوية الموقف القانوني:**
-- كيفية تعزيز الأدلة والحجج
-- الاحتياطات الواجب اتخاذها لحماية الحقوق
-- استراتيجيات التفاوض قبل التقاضي
-
-⚠️ **تقييم المخاطر:**
-- احتمالات النجاح وعوامل التأثير
-- التكاليف المتوقعة والعائد المحتمل
-- البدائل المتاحة في حالة عدم نجاح الاستراتيجية الأساسية
-
-قدم استراتيجية قانونية شاملة وعملية لتحقيق أفضل النتائج."""
-
-    @classmethod
-    def _build_general_advice_prompt(cls, query: str, retrieved_chunks: List[Chunk], legal_issue: LegalIssue) -> str:
-        """Build general legal advice prompt"""
-        
-        legal_context = cls._format_legal_context(retrieved_chunks)
-        
-        if not legal_context:
-            return f"""قدم استشارة قانونية سعودية شاملة للسؤال التالي:
-
-{query}
-
-**متطلبات الاستشارة:**
-- إجابة مباشرة وواضحة مبنية على الأنظمة السعودية
-- توضيح عملي للتطبيق في السياق السعودي
-- نصائح قانونية محددة وقابلة للتطبيق
-- تحديد الخطوات العملية إن لزم الأمر"""
-        
-        return f"""قدم استشارة قانونية سعودية متخصصة بناءً على الأنظمة التالية:
-
-📚 **المراجع القانونية الرسمية:**
-{legal_context}
-
-❓ **السؤال القانوني:**
-{query}
-
-**مطلوب منك كمستشار قانوني:**
-
-🔍 **التحليل القانوني:**
-- تحليل الوضع بناءً على الأنظمة المرفقة
-- تطبيق المواد القانونية ذات الصلة
-- تحديد الحقوق والالتزامات
-
-💡 **الإرشاد العملي:**
-- الخطوات العملية الواجب اتخاذها
-- النصائح القانونية المحددة
-- التحذيرات والاحتياطات المهمة
-
-📋 **التوصيات:**
-- أفضل المسارات القانونية المتاحة
-- البدائل في حالة وجود عقبات
-- الموارد والجهات التي يمكن الرجوع إليها
-
-استخدم لغة مهنية واضحة مع التركيز على الحلول العملية."""
-
-    @classmethod
-    def _format_legal_context(cls, retrieved_chunks: List[Chunk]) -> str:
-        """Format retrieved legal documents with article extraction and citation guidance"""
-        if not retrieved_chunks:
-            return """⚠️ **تحذير:** لا توجد وثائق قانونية محددة متاحة في قاعدة البيانات.
-            
-**يجب عليك:**
-- أن تقول صراحة: "المعلومات القانونية المحددة غير متوفرة في قاعدة البيانات"
-- تجنب تماماً الاستشهادات العامة أو غير المدعومة
-- لا تذكر أرقام مواد إلا إذا كانت موجودة في النصوص المرفقة"""
-        
-        formatted_context = []
-        article_numbers_found = []
-        
-        for i, chunk in enumerate(retrieved_chunks, 1):
-            # Extract article numbers from chunk content
-            articles = cls._extract_article_numbers(chunk.content)
-            if articles:
-                article_numbers_found.extend(articles)
-            
-            # Format chunk with article highlighting
-            formatted_chunk = f"""📄 **المرجع {i}: {chunk.title}**
-
-📋 **المواد القانونية المتاحة في هذا المرجع:**
-{cls._highlight_articles(chunk.content)}
-
-💡 **إرشادات الاستشهاد:**
-- استخدم فقط المواد المذكورة أعلاه من هذا المرجع
-- اذكر رقم المادة + مصدرها ({chunk.title})
-- لا تستنتج مواد غير موجودة في النص"""
-            
-            formatted_context.append(formatted_chunk)
-        
-        # Add citation summary
-        if article_numbers_found:
-            summary = f"""
-🎯 **ملخص المواد القانونية المتاحة للاستشهاد:**
-{', '.join(set(article_numbers_found))}
-
-⚠️ **تعليمات صارمة:**
-- استخدم فقط هذه المواد المذكورة أعلاه
-- كل استشهاد يجب أن يتبع تنسيق: "وفقاً للمادة (X) من [المصدر المحدد]"
-- ممنوع ذكر أي مواد أخرى غير موجودة في النصوص المرفقة
-- إذا سألك المستخدم عن مادة غير موجودة، قل: "هذه المادة غير متوفرة في الوثائق المرفقة"
+    context_parts = []
+    for i, chunk in enumerate(retrieved_chunks, 1):
+        formatted_chunk = f"""
+**مرجع {i}: {chunk.title}**
+{chunk.content}
 """
-            formatted_context.insert(0, summary)
-        
-        return "\n\n".join(formatted_context)
-
-    @classmethod
-    def _extract_article_numbers(cls, text: str) -> List[str]:
-        """Extract article numbers from legal text"""
-        import re
-        
-        # Patterns for Arabic article numbers
-        patterns = [
-            r'المادة\s*\((\d+)\)',           # المادة (12)
-            r'المادة\s*(\d+)',              # المادة 12
-            r'مادة\s*\((\d+)\)',            # مادة (12)
-            r'مادة\s*(\d+)',               # مادة 12
-            r'الفقرة\s*\((\d+)\)',          # الفقرة (3)
-            r'الفقرة\s*(\d+)',             # الفقرة 3
-            r'البند\s*\((\d+)\)',           # البند (5)
-            r'البند\s*(\d+)',              # البند 5
-        ]
-        
-        article_numbers = []
-        for pattern in patterns:
-            matches = re.findall(pattern, text)
-            for match in matches:
-                article_numbers.append(f"المادة ({match})")
-        
-        return list(set(article_numbers))  # Remove duplicates
-
-    @classmethod  
-    def _highlight_articles(cls, text: str) -> str:
-        """Highlight article numbers in legal text for easy identification"""
-        import re
-        
-        # Highlight article patterns
-        patterns = [
-            (r'(المادة\s*\(\d+\))', r'🎯 **\1**'),
-            (r'(المادة\s*\d+)', r'🎯 **\1**'),
-            (r'(مادة\s*\(\d+\))', r'🎯 **\1**'),
-            (r'(مادة\s*\d+)', r'🎯 **\1**'),
-        ]
-        
-        highlighted_text = text
-        for pattern, replacement in patterns:
-            highlighted_text = re.sub(pattern, replacement, highlighted_text)
-        
-        return highlighted_text
-
-
-    @classmethod
-    def build_conversation_aware_prompt(
-        cls, 
-        query: str, 
-        retrieved_chunks: List[Chunk], 
-        legal_issue: LegalIssue
-    ) -> str:
-        """Lean conversation-aware prompt with citation enforcement"""
-        
-        legal_context = cls._format_legal_context(retrieved_chunks)
-        
-        # Determine conversation prefix
-        conversation_prefix = ""
-        if hasattr(legal_issue, 'conversation_context'):
-            context = legal_issue.conversation_context
-            if context.conversation_flow == 'first_message':
-                conversation_prefix = "استشارة جديدة - قدم تحليل شامل:"
-            elif context.is_follow_up:
-                conversation_prefix = "متابعة - ابدأ بـ 'كما ذكرت سابقاً':"
-            elif context.is_repetition:
-                conversation_prefix = "توضيح - اشرح بطريقة أبسط:"
-            elif context.conversation_flow == 'continuation':
-                conversation_prefix = "استكمال - أضف معلومات جديدة:"
-            elif context.conversation_flow == 'topic_change':
-                conversation_prefix = "موضوع جديد - ابدأ بـ 'انتقالاً إلى':"
-        
-        return f"""{conversation_prefix}
-
-📚 {legal_context}
-
-❓ {query}
-
-🎯 **إجبارية:** كل نقطة تبدأ بـ "وفقاً للمادة (X) من [المصدر]"
-🚫 **ممنوع:** عموميات، "القوانين تنص"، استشهادات غير موجودة
-
-قدم استشارة عملية مع استشهاد دقيق."""
-            
-
-    @classmethod
-    def _build_comprehensive_first_prompt(cls, query: str, retrieved_chunks: List[Chunk], legal_issue: LegalIssue) -> str:
-        """Build comprehensive first response prompt with citation enforcement"""
-        legal_context = cls._format_legal_context(retrieved_chunks)
-
-        # 'legal_issue' is required by signature for consistency, even if not used directly.
-        return f"""هذا أول سؤال في استشارة قانونية جديدة. قدم استشارة شاملة مع استشهاد دقيق.
-
-📚 **المراجع القانونية:**
-{legal_context}
-
-❓ **السؤال القانوني:**
-{query}
-
-🎯 **قواعد الاستشهاد الإجبارية:**
-- كل نقطة قانونية يجب أن تبدأ بـ: "وفقاً للمادة (X) من [المصدر المحدد]"
-- ممنوع استخدام: "القوانين تنص", "الأنظمة تشير", "عموماً", "عادة"
-- استخدم فقط المواد المذكورة في المراجع أعلاه
-- إذا لم تجد مادة محددة، قل: "المادة غير متوفرة في الوثائق المرفقة"
-
-**مطلوب منك كمحامي سعودي خبير:**
-
-⚖️ **التحليل القانوني الأساسي:**
-- ابدأ كل نقطة بالاستشهاد المحدد: "وفقاً للمادة (X) من [المصدر]"
-- اربط كل حق أو التزام بالمادة القانونية المناسبة
-- اشرح التطبيق العملي مع ذكر المصدر القانوني
-
-💡 **الإرشاد العملي مع المصادر:**
-- "بموجب المادة (X): الخطوة الأولى هي..."
-- "استناداً للمادة (Y): المستندات المطلوبة هي..."
-- "وفقاً للمادة (Z): المهلة القانونية هي..."
-
-🎯 **الاستراتيجية المقترحة مع الأساس القانوني:**
-- "المادة (X) تتيح لك الخيارات التالية..."
-- "بناءً على المادة (Y): المخاطر هي..."
-- "المادة (Z) توضح البدائل المتاحة..."
-
-⚠️ **تحذيرات قانونية محددة:**
-- "المادة (X) تحذر من..."
-- "وفقاً للمادة (Y): يجب تجنب..."
-- "المادة (Z) تنص على عقوبة..."
-
-🚫 **ممنوع تماماً:**
-- أي عبارة عامة بدون رقم مادة محدد
-- الاستشهاد بمواد غير موجودة في المراجع المرفقة
-- استخدام عبارات: "حسب القانون", "الأنظمة تنص", "عموماً"
-
-استخدم فقط المواد المحددة في المراجع أعلاه مع ذكر أرقامها ومصادرها بدقة."""
-
-
-    @classmethod
-    def _build_clarification_prompt(cls, query: str, retrieved_chunks: List[Chunk]) -> str:
-        """Build clarification-focused prompt with citation enforcement"""
-
-        legal_context = cls._format_legal_context(retrieved_chunks)
-
-        return f"""المستخدم يطلب توضيحاً إضافياً. ركز على التوضيح مع استشهاد دقيق.
-
-📚 **المراجع القانونية:**
-{legal_context}
-
-❓ **طلب التوضيح:**
-{query}
-
-🎯 **قواعد الاستشهاد الإجبارية:**
-- كل توضيح يجب أن يبدأ بـ: "وفقاً للمادة (X) من [المصدر]"
-- لا توضيحات عامة - فقط مبنية على المواد المحددة
-- إذا لم تجد مادة محددة، قل: "التوضيح المطلوب غير متوفر في الوثائق المرفقة"
-
-**مطلوب منك:**
-
-🔍 **التوضيح المركز مع المصادر:**
-- "المادة (X) توضح هذه النقطة كالتالي..."
-- "بموجب المادة (Y): التفسير الصحيح هو..."
-- "وفقاً للمادة (Z): المعنى المحدد يشمل..."
-
-💭 **إعادة الصياغة بالاستشهاد:**
-- "لتبسيط المادة (X): المقصود هو..."
-- "المادة (Y) تعني عملياً..."
-- "للتوضيح، المادة (Z) تنص على..."
-
-✅ **خطوات واضحة مع المصادر:**
-- "الخطوة الأولى وفقاً للمادة (X): ..."
-- "الخطوة الثانية بموجب المادة (Y): ..."
-- "الخطوة الثالثة استناداً للمادة (Z): ..."
-
-🚫 **ممنوع تماماً:**
-- أي توضيح بدون رقم مادة محدد
-- العبارات التوضيحية العامة
-- التشبيهات بدون أساس قانوني
-
-قدم توضيحاً مختصراً مبنياً فقط على المواد المحددة في المراجع."""
-
-@classmethod
-def _build_follow_up_prompt(cls, query: str, retrieved_chunks: List[Chunk], legal_issue: LegalIssue) -> str:
-    """Build follow-up prompt with citation enforcement and reference to previous discussion"""
+        context_parts.append(formatted_chunk)
     
-    legal_context = cls._format_legal_context(retrieved_chunks)
+    context = f"""لديك هذه المراجع القانونية السعودية ذات الصلة:
+
+{chr(10).join(context_parts)}
+
+استخدم هذه المراجع للمساعدة في إجابتك، ولكن لا تجعل ردك يبدو كآلة قانونية. تحدث بطريقة طبيعية واستشهد بالمراجع عند الحاجة فقط."""
     
-    return f"""هذا سؤال متابعة يبني على النقاش السابق. اربط إجابتك بما تم شرحه مع استشهاد دقيق.
-
-📚 **المراجع القانونية الإضافية:**
-{legal_context}
-
-❓ **سؤال المتابعة:**
-{query}
-
-🎯 **قواعد الاستشهاد الإجبارية:**
-- كل نقطة قانونية يجب أن تبدأ بـ: "وفقاً للمادة (X) من [المصدر المحدد]"
-- استخدم فقط المواد المذكورة في المراجع أعلاه
-- ممنوع الاستشهادات العامة أو غير المدعومة
-
-**مطلوب منك:**
-
-🔗 **الربط بالسابق مع المصادر:**
-- "بناءً على ما ناقشناه سابقاً حول المادة (X)..."
-- "كما ذكرت في النقطة السابقة وفقاً للمادة (Y)..."
-- "لاستكمال ما تم شرحه عن المادة (Z)..."
-
-➕ **المعلومات الإضافية مع الاستشهاد:**
-- "وفقاً للمادة (X) الإضافية: المعلومة الجديدة هي..."
-- "المادة (Y) توضح جانباً لم نتطرق إليه سابقاً..."
-- "بموجب المادة (Z): التفصيل الإضافي يشمل..."
-
-🎯 **التطبيق العملي مع المصادر:**
-- "المادة (X) تطبق مع ما سبق بالطريقة التالية..."
-- "استناداً للمادة (Y): الخطوات التالية هي..."
-- "وفقاً للمادة (Z): التكامل يتم عبر..."
-
-⚠️ **تجنب تماماً:**
-- تكرار نفس الاستشهادات من المناقشة السابقة
-- ذكر مواد جديدة بدون الإشارة إليها كإضافة
-- العبارات العامة بدون مصادر محددة
-
-حافظ على تسلسل منطقي مع استشهاد دقيق من المواد المتاحة."""
-
-@classmethod
-def _build_continuation_prompt(cls, query: str, retrieved_chunks: List[Chunk], legal_issue: LegalIssue) -> str:
-    """Build continuation prompt with citation enforcement"""
-    
-    legal_context = cls._format_legal_context(retrieved_chunks)
-    
-    return f"""هذا استكمال لنفس الموضوع القانوني. تابع النقاش مع استشهاد دقيق.
-
-📚 **المراجع القانونية ذات الصلة:**
-{legal_context}
-
-❓ **استكمال الموضوع:**
-{query}
-
-🎯 **قواعد الاستشهاد الإجبارية:**
-- كل معلومة جديدة يجب أن تبدأ بـ: "وفقاً للمادة (X) من [المصدر]"
-- استخدم فقط المواد المذكورة في المراجع أعلاه
-- لا تكرر الاستشهادات السابقة إلا للضرورة
-
-**مطلوب منك:**
-
-📈 **البناء على المناقشة مع مصادر جديدة:**
-- "للتعمق أكثر، المادة (X) تنص على..."
-- "من جانب آخر، المادة (Y) توضح..."
-- "للإضافة على ما سبق، المادة (Z) تشير إلى..."
-
-🔍 **التعمق في التفاصيل مع الاستشهاد:**
-- "المادة (X) تحدد الحالات الخاصة التالية..."
-- "وفقاً للمادة (Y): الاستثناءات تشمل..."
-- "المادة (Z) توضح التطبيقات المختلفة..."
-
-💼 **الجانب العملي مع المصادر:**
-- "المادة (X) تطبق عملياً في هذه الحالات..."
-- "بموجب المادة (Y): الممارسة القانونية تتطلب..."
-- "استناداً للمادة (Z): النصائح المتقدمة تشمل..."
-
-🚫 **ممنوع:**
-- إعادة شرح المواد التي تم تناولها مسبقاً
-- الاستشهاد بمواد غير موجودة في المراجع
-- العموميات بدون مصادر محددة
-
-قدم معلومات جديدة مع استشهاد دقيق من المواد المتاحة."""
-
-@classmethod
-def _build_topic_change_prompt(cls, query: str, retrieved_chunks: List[Chunk], legal_issue: LegalIssue) -> str:
-    """Build prompt for topic change with fresh citation enforcement"""
-    
-    legal_context = cls._format_legal_context(retrieved_chunks)
-    
-    return f"""انتقل المستخدم لموضوع قانوني جديد. ابدأ تحليلاً جديداً مع استشهاد دقيق.
-
-📚 **المراجع القانونية للموضوع الجديد:**
-{legal_context}
-
-❓ **الموضوع الجديد:**
-{query}
-
-🎯 **قواعد الاستشهاد للموضوع الجديد:**
-- كل نقطة يجب أن تبدأ بـ: "وفقاً للمادة (X) من [المصدر]"
-- تعامل مع هذا كاستشارة قانونية جديدة تماماً
-- استخدم فقط المراجع المرفقة للموضوع الجديد
-
-**مطلوب منك:**
-
-🔄 **الاعتراف بالتغيير:**
-- "انتقالاً إلى موضوع قانوني جديد..."
-- "بخصوص استفسارك الجديد حول..."
-- "في هذا الموضوع المختلف..."
-
-⚖️ **التحليل الجديد مع الاستشهاد:**
-- "المادة (X) تحكم هذا الموضوع الجديد..."
-- "وفقاً للمادة (Y): الإطار القانوني يشمل..."
-- "بموجب المادة (Z): الأحكام ذات الصلة هي..."
-
-🎯 **التركيز على الجديد مع المصادر:**
-- "المادة (X) تنص على القواعد الأساسية..."
-- "استناداً للمادة (Y): المتطلبات تشمل..."
-- "وفقاً للمادة (Z): الإجراءات المطلوبة هي..."
-
-🚫 **ممنوع:**
-- الربط بالمواضيع السابقة بدون مبرر قانوني
-- الاستشهادات العامة أو المختلطة
-- نقل المعلومات من مواضيع أخرى
-
-تعامل مع هذا كاستشارة جديدة مع استشهاد دقيق من المراجع المتاحة."""
+    return context
 
 
-
-
-
-"""
-Updated RAG Engine Integration - Minimal changes to pass AI client
-Only change: Pass AI client to MasterPromptController
-"""
-
-
-    
-class LegalReasoningRAGEngine:
+class IntelligentLegalRAG:
     """
-    Advanced Legal Reasoning RAG Engine - Enhanced with Dynamic AI Analysis
-    
-    Minimal changes: Now passes AI client to MasterPromptController for dynamic conversation analysis
+    Intelligent Legal RAG with AI-Powered Intent Classification
+    No hard-coding - AI handles classification and prompt selection
     """
     
     def __init__(self):
-        """Initialize Legal RAG engine with dynamic AI conversation analysis"""
+        """Initialize intelligent RAG with AI classification"""
         self.ai_client = ai_client
         self.ai_model = ai_model
         
-        # Create storage backend via factory
+        # Add smart document retrieval
         self.storage = StorageFactory.create_storage()
-        
-        # Create components
         self.retriever = DocumentRetriever(
             storage=self.storage,
             ai_client=self.ai_client
         )
         
-        self.issue_analyzer = EnhancedLegalIssueAnalyzer()
-        self.document_type_analyzer = LegalDocumentTypeAnalyzer()
-        self.document_generator = LegalDocumentGenerator()
+        # Add AI-powered intent classifier
+        self.classifier = IntentClassifier(
+            ai_client=self.ai_client,
+            model=classification_model
+        )
         
-        # 🚀 ENHANCED: Pass AI client to MasterPromptController for dynamic analysis
-        self.master_controller = get_master_controller(ai_client=self.ai_client)
-        
-        self.prompt_builder = LegalPromptBuilder()
-        
-        logger.info(f"LegalReasoningRAGEngine initialized with dynamic AI conversation analysis")
-
-    # ✅ ADD THIS METHOD INSIDE THE CLASS - PROPERLY INDENTED
-    async def _stream_legal_response(self, messages: List[Dict[str, str]]) -> AsyncIterator[str]:
-        """Stream legal response from AI with rate limit handling"""
-        import asyncio
-
-        max_retries = 3
-        base_delay = 2
-
-        for attempt in range(max_retries):
-            try:
-                stream = await self.ai_client.chat.completions.create(
-                    model=self.ai_model,
-                    messages=messages,
-                    temperature=0.15,  # Low temperature for consistent legal advice
-                    max_tokens=6000,
-                    stream=True
-                )
-
-                async for chunk in stream:
-                    if chunk.choices[0].delta.content:
-                        yield chunk.choices[0].delta.content
-
-                return  # Success - exit retry loop
-
-            except Exception as e:
-                error_str = str(e).lower()
-                logger.error(f"AI streaming error (attempt {attempt + 1}): {e}")
-
-                # Check if it's a rate limiting error
-                if any(indicator in error_str for indicator in ["429", "rate limit", "too many requests", "quota"]):
-                    if attempt < max_retries - 1:
-                        retry_delay = base_delay * (2 ** attempt)  # Exponential backoff: 2s, 4s, 8s
-                        logger.warning(f"🔄 Rate limit detected. Retrying in {retry_delay} seconds... (attempt {attempt + 1}/{max_retries})")
-
-                        # Yield a waiting message to user
-                        yield f"\n\n⏳ **انتظار:** تم تجاوز الحد المسموح مؤقتاً. جاري إعادة المحاولة خلال {retry_delay} ثانية...\n\n"
-
-                        await asyncio.sleep(retry_delay)
-                        continue
-                    else:
-                        # Final attempt failed
-                        logger.error(f"❌ Rate limit exceeded after {max_retries} attempts")
-                        yield f"""
-
-🚨 **خطأ في الاتصال بخدمة الذكاء الاصطناعي**
-
-**السبب:** تجاوز الحد المسموح من الطلبات (Rate Limit)
-
-**الحلول المقترحة:**
-1. **انتظر دقيقة واحدة** ثم أعد المحاولة
-2. **تحقق من رصيد OpenAI** في حسابك
-3. **تواصل مع الدعم الفني** إذا استمر الخطأ
-
-**رمز الخطأ:** HTTP 429 - Too Many Requests"""
-                        return
-
-                # Different error type (not rate limiting)
-                elif any(indicator in error_str for indicator in ["authentication", "api key", "unauthorized"]):
-                    logger.error("❌ Authentication error - API key issue")
-                    yield f"""
-
-🔑 **خطأ في المصادقة**
-
-**السبب:** مشكلة في مفتاح API أو انتهاء صلاحيته
-
-**الحلول:**
-1. تحقق من صحة مفتاح OpenAI API
-2. تأكد من وجود رصيد كافي في الحساب
-3. تواصل مع المطور لتحديث المفاتيح
-
-**رمز الخطأ:** {str(e)}"""
-                    return
-
-                else:
-                    # Generic error - retry once
-                    if attempt < max_retries - 1:
-                        logger.warning(f"🔄 Generic error, retrying... (attempt {attempt + 1}/{max_retries})")
-                        await asyncio.sleep(base_delay)
-                        continue
-                    else:
-                        logger.error(f"❌ Final attempt failed with generic error")
-                        yield f"\n\n❌ **خطأ تقني:** {str(e)}\n\nيرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني."
-                        return
+        logger.info("🚀 Intelligent Legal RAG initialized - AI-powered classification + Smart retrieval!")
     
-    async def _add_request_delay(self):
-        """Add small delay between requests to prevent rate limiting"""
-        import asyncio
-        await asyncio.sleep(0.5)
-
-    # ... rest of your existing methods (ask_question_streaming, ask_question_with_context_streaming, etc.)
     async def ask_question_streaming(self, query: str) -> AsyncIterator[str]:
         """
-        Stream legal consultation with dynamic AI conversation analysis
-        
-        NO CHANGES to this method - it automatically uses the enhanced system!
+        Intelligent legal consultation with AI-powered intent classification
         """
         try:
-            logger.info(f"Processing legal question: {query[:50]}...")
+            logger.info(f"Processing intelligent legal question: {query[:50]}...")
             
-            # Stage 1: Analyze legal issue
-            legal_issue = await self.issue_analyzer.analyze_issue_with_context(query, [])
-            logger.info(f"Legal analysis: {legal_issue.issue_type} | {legal_issue.legal_domain} | {legal_issue.user_position}")
+            # Stage 1: AI-powered intent classification
+            classification = await self.classifier.classify_intent(query)
+            category = classification["category"]
+            confidence = classification["confidence"]
             
-            # Stage 2: Retrieve relevant legal documents
-            document_type = self.document_type_analyzer.analyze_document_type(query)
-            logger.info(f"Contextual document type: {document_type.specific_type} | Category: {document_type.document_category}")
-            relevant_chunks = await self.retriever.retrieve_relevant_chunks(
-                query=query, 
-                legal_issue=legal_issue,
-                top_k=2
-            )
+            # Stage 2: Get relevant documents from database
+            relevant_docs = await self.retriever.get_relevant_documents(query, top_k=3)
             
-            # 🎯 Stage 3: Use Enhanced Master Controller with dynamic AI analysis
-            legal_prompt = await self.master_controller.generate_prompt_for_query(
-                query=query,
-                retrieved_documents=relevant_chunks,
-                conversation_history=[]
-            )
-            logger.info("✅ Using enhanced Master Controller with dynamic AI conversation analysis")
+            # Stage 3: Select appropriate prompt based on AI classification
+            system_prompt = PROMPT_TEMPLATES[category]
             
-            if relevant_chunks:
-                logger.info(f"Using legal reasoning with {len(relevant_chunks)} relevant documents")
+            # Stage 4: Build intelligent prompt with documents
+            if relevant_docs:
+                legal_context = format_legal_context_naturally(relevant_docs)
+                full_prompt = f"""{legal_context}
+
+السؤال: {query}"""
+                logger.info(f"Using {len(relevant_docs)} relevant legal documents with {category} approach")
             else:
-                logger.info("Using general legal knowledge (no specific documents found)")
-            await self._add_request_delay()
+                full_prompt = query
+                logger.info(f"No relevant documents found - using {category} approach with general knowledge")
             
-            # Stage 4: Generate legal advice with enhanced system
             messages = [
-                {"role": "system", "content": "أنت مستشار قانوني سعودي متخصص."},
-                {"role": "user", "content": legal_prompt}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": full_prompt}
             ]
             
-            # Stream legal advice
-            yield "⚖️ **الاستشارة القانونية**\n\n"
-            
-            async for chunk in self._stream_legal_response(messages):
+            # Stage 5: Stream intelligent response
+            async for chunk in self._stream_ai_response(messages):
                 yield chunk
                 
         except Exception as e:
-            logger.error(f"Legal reasoning error: {e}")
-            yield f"عذراً، حدث خطأ في معالجة الاستشارة القانونية: {str(e)}"
-
+            logger.error(f"Intelligent legal AI error: {e}")
+            yield f"عذراً، حدث خطأ في معالجة سؤالك: {str(e)}"
+    
     async def ask_question_with_context_streaming(
         self, 
         query: str, 
         conversation_history: List[Dict[str, str]]
     ) -> AsyncIterator[str]:
         """
-        Stream legal consultation with dynamic conversation context analysis
-        
-        🚀 ENHANCED: Now uses dynamic AI conversation analysis instead of hardcoded patterns!
+        Intelligent context-aware legal consultation with AI classification
         """
         try:
-            logger.info(f"Processing contextual legal question: {query[:50]}...")
+            logger.info(f"Processing intelligent contextual legal question: {query[:50]}...")
             logger.info(f"Conversation context: {len(conversation_history)} messages")
             
-            # Stage 1: Analyze legal issue with conversation context
-            legal_issue = await self.issue_analyzer.analyze_issue_with_context(query, conversation_history)
-            logger.info(f"Legal analysis: {legal_issue.issue_type} | {legal_issue.legal_domain} | {legal_issue.user_position}")
+            # Stage 1: AI-powered intent classification with context
+            classification = await self.classifier.classify_intent(query, conversation_history)
+            category = classification["category"]
+            confidence = classification["confidence"]
             
-            # Stage 2: Retrieve relevant legal documents
-            document_type = self.document_type_analyzer.analyze_document_type(query)
-            logger.info(f"Contextual document type: {document_type.specific_type} | Category: {document_type.document_category}")
-            relevant_chunks = await self.retriever.retrieve_relevant_chunks(
-                query=query, 
-                legal_issue=legal_issue,
-                top_k=2
-            )
+            # Stage 2: Get relevant documents
+            relevant_docs = await self.retriever.get_relevant_documents(query, top_k=3)
             
-            # Stage 3: Build contextual messages
+            # Stage 3: Select appropriate prompt
+            system_prompt = PROMPT_TEMPLATES[category]
+            
             messages = [
-                {"role": "system", "content": "أنت مستشار قانوني سعودي متخصص."}
+                {"role": "system", "content": system_prompt}
             ]
             
-            # Add conversation history (limit to last 8 messages)
+            # Stage 4: Add conversation history (last 8 messages)
             recent_history = conversation_history[-8:] if len(conversation_history) > 8 else conversation_history
             for msg in recent_history:
                 messages.append({
@@ -1052,43 +534,88 @@ class LegalReasoningRAGEngine:
                     "content": msg["content"]
                 })
             
-            # 🎯 Stage 4: Use Enhanced Master Controller with dynamic conversation analysis
-            contextual_prompt = await self.master_controller.generate_prompt_for_query(
-                query=query,
-                retrieved_documents=relevant_chunks,
-                conversation_history=recent_history
-            )
-            logger.info("✅ Using enhanced Master Controller with dynamic conversation context analysis")
+            # Stage 5: Add current question with legal context if available
+            if relevant_docs:
+                legal_context = format_legal_context_naturally(relevant_docs)
+                contextual_prompt = f"""{legal_context}
+
+السؤال: {query}"""
+                logger.info(f"Using {len(relevant_docs)} relevant legal documents with {category} approach (contextual)")
+            else:
+                contextual_prompt = query
+                logger.info(f"No relevant documents found - using {category} approach with contextual general knowledge")
             
-            messages.append({    
-                "role": "user",
+            messages.append({
+                "role": "user", 
                 "content": contextual_prompt
             })
-
-            if relevant_chunks:
-                logger.info(f"Using contextual legal reasoning with {len(relevant_chunks)} documents")
-            else:
-                logger.info("Using contextual general legal knowledge")
             
-            # Stream legal advice
-            yield "⚖️ **الاستشارة القانونية**\n\n"
-            
-            async for chunk in self._stream_legal_response(messages):
+            # Stage 6: Stream intelligent contextual response
+            async for chunk in self._stream_ai_response(messages):
                 yield chunk
                 
         except Exception as e:
-            logger.error(f"Contextual legal reasoning error: {e}")
-            yield f"عذراً، حدث خطأ في معالجة الاستشارة القانونية: {str(e)}"
-
-    # All other methods stay exactly the same...
-    async def _add_request_delay(self):
-        """Add small delay between requests to prevent rate limiting - NO CHANGES"""
-        import asyncio
-        await asyncio.sleep(0.5)
+            logger.error(f"Intelligent contextual legal AI error: {e}")
+            yield f"عذراً، حدث خطأ في معالجة سؤالك: {str(e)}"
     
+    async def _stream_ai_response(self, messages: List[Dict[str, str]]) -> AsyncIterator[str]:
+        """Stream AI response with error handling"""
+        try:
+            stream = await self.ai_client.chat.completions.create(
+                model=self.ai_model,
+                messages=messages,
+                temperature=0.3,  # Balanced creativity and consistency
+                max_tokens=1500,  # Reasonable length
+                stream=True
+            )
+            
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+                    
+        except Exception as e:
+            logger.error(f"AI streaming error: {e}")
+            error_msg = str(e).lower()
+            
+            if "rate limit" in error_msg or "429" in error_msg:
+                yield "\n\n⏳ تم تجاوز الحد المسموح مؤقتاً. يرجى الانتظار دقيقة وإعادة المحاولة."
+            elif "api key" in error_msg or "authentication" in error_msg:
+                yield "\n\n🔑 خطأ في مفتاح API. يرجى التواصل مع الدعم الفني."
+            else:
+                yield f"\n\n❌ خطأ تقني: {str(e)}"
+    
+    async def generate_conversation_title(self, first_message: str) -> str:
+        """Intelligent conversation title generation"""
+        try:
+            title_prompt = f"اقترح عنواناً مختصراً (أقل من 30 حرف) لهذه الاستشارة القانونية: {first_message[:100]}"
+            
+            response = await self.ai_client.chat.completions.create(
+                model=classification_model,  # Use small model for title generation
+                messages=[{"role": "user", "content": title_prompt}],
+                max_tokens=50,
+                temperature=0.3
+            )
+            
+            title = response.choices[0].message.content.strip()
+            title = title.strip('"').strip("'").strip()
+            
+            # Remove common prefixes
+            prefixes = ["العنوان:", "المقترح:", "عنوان:"]
+            for prefix in prefixes:
+                if title.startswith(prefix):
+                    title = title[len(prefix):].strip()
+            
+            return title[:30] if len(title) > 30 else title
+            
+        except Exception as e:
+            logger.error(f"Title generation error: {e}")
+            return first_message[:25] + "..." if len(first_message) > 25 else first_message
 
 
-# Legacy sync functions for backward compatibility
+# Global instance - maintains compatibility with existing code
+rag_engine = IntelligentLegalRAG()
+
+# Legacy compatibility functions - exactly the same interface as before
 async def ask_question(query: str) -> str:
     """Legacy sync function - converts streaming to complete response"""
     chunks = []
@@ -1107,60 +634,33 @@ async def generate_conversation_title(first_message: str) -> str:
     """Legacy function for title generation"""
     return await rag_engine.generate_conversation_title(first_message)
 
-# Add this method to your LegalReasoningRAGEngine class (around line 200)
+# Test function
+async def test_intelligent_rag():
+    """Test the intelligent RAG system with classification"""
+    print("🧪 Testing intelligent RAG engine with AI classification...")
+    
+    test_queries = [
+        "ما هي عقوبات التهرب الضريبي؟",  # Should be GENERAL_QUESTION
+        "رفع علي خصم دعوى كيدية كيف أرد عليه؟",  # Should be ACTIVE_DISPUTE
+        "أريد مقاضاة شركتي هل الأمر يستحق؟"  # Should be PLANNING_ACTION
+    ]
+    
+    for query in test_queries:
+        print(f"\n🧪 Testing: {query}")
+        print("Response:")
+        
+        response_chunks = []
+        async for chunk in rag_engine.ask_question_streaming(query):
+            response_chunks.append(chunk)
+            print(chunk, end="", flush=True)
+        
+        print(f"\n✅ Test complete for this query!\n{'-'*50}")
+    
+    return True
 
-async def process_legal_memo_file(self, file_path: str) -> Dict[str, Any]:
-   """Process 25K legal memo file and add to storage"""
-   
-   try:
-       processor = LegalMemoProcessor(self.storage)
-       
-       # Extract individual memos
-       memos = await processor.extract_individual_memos(file_path)
-       logger.info(f"Extracted {len(memos)} legal memos from file")
-       
-       # Process each memo
-       all_chunks = []
-       court_system_counts = {}
-       
-       for memo in memos:
-           # Count by court system
-           court_system_counts[memo.court_system] = court_system_counts.get(memo.court_system, 0) + 1
-           
-           # Chunk the memo
-           chunks = processor.chunk_legal_memo(memo)
-           all_chunks.extend(chunks)
-           
-           # Process in batches to avoid memory issues
-           if len(all_chunks) >= 50:
-               await self.storage.add_chunks(all_chunks)
-               logger.info(f"Stored batch of {len(all_chunks)} chunks")
-               all_chunks = []
-       
-       # Store remaining chunks
-       if all_chunks:
-           await self.storage.add_chunks(all_chunks)
-           logger.info(f"Stored final batch of {len(all_chunks)} chunks")
-       
-       # Get final stats
-       stats = await self.storage.get_stats()
-       
-       return {
-           "success": True,
-           "total_memos": len(memos),
-           "total_chunks": stats.total_chunks,
-           "court_system_breakdown": court_system_counts,
-           "message": f"Successfully processed {len(memos)} legal memos into {stats.total_chunks} chunks"
-       }
-       
-   except Exception as e:
-       logger.error(f"Error processing legal memo file: {e}")
-       return {
-           "success": False,
-           "error": str(e),
-           "message": f"Failed to process legal memo file: {str(e)}"
-       }
+# System initialization
+print("🏛️ Intelligent Legal RAG Engine loaded - AI-powered classification + Smart document retrieval!")
 
-# System initialization message
-print("🏛️ Legal Reasoning RAG Engine loaded - Production ready with zero tech debt!")
-rag_engine = LegalReasoningRAGEngine()
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(test_intelligent_rag())
