@@ -1,0 +1,35 @@
+{
+    "deployments": [
+        {
+            "id": "ecs-svc/6458403768484331621",
+            "status": "PRIMARY",
+            "taskDefinition": "arn:aws:ecs:eu-central-1:861789815646:task-definition/new-moaen-ai-backend:1",
+            "desiredCount": 1,
+            "pendingCount": 0,
+            "runningCount": 0,
+            "failedTasks": 5,
+            "createdAt": "2025-07-28T14:10:57.238000+03:00",
+            "updatedAt": "2025-07-28T14:11:52.731000+03:00",
+            "launchType": "FARGATE",
+            "platformVersion": "1.4.0",
+            "platformFamily": "Linux",
+            "networkConfiguration": {
+                "awsvpcConfiguration": {
+                    "subnets": [
+                        "subnet-0a157f3bc223fa31e",
+                        "subnet-0d0fa42cb0251882f"
+                    ],
+                    "securityGroups": [
+                        "sg-0662b19c732b62c25"
+                    ],
+                    "assignPublicIp": "DISABLED"
+                }
+            },
+            "rolloutState": "IN_PROGRESS",
+            "rolloutStateReason": "ECS deployment ecs-svc/6458403768484331621 in progress."
+        }
+    ],
+    "runningCount": 0,
+    "pendingCount": 0,
+    "desiredCount": 1
+}

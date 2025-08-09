@@ -225,8 +225,7 @@ class Settings(BaseSettings):
         else:  # Production
             # For production, require explicit configuration but provide CloudFront fallback
             return [
-                "https://d10drat4g0606g.cloudfront.net",
-                "https://d2c979d13bkvf4.cloudfront.net"
+                
             ]
     
     @property

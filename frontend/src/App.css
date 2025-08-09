@@ -558,7 +558,7 @@ button,
 
 .ai-message-formatted h2 { 
   font-size: 1.15rem !important; 
-  color: #059669 !important; 
+  color: #05966d !important; 
 }
 
 .ai-message-formatted h3 { 
@@ -598,7 +598,7 @@ button,
 .ai-message-formatted em,
 .ai-message-formatted i {
   font-style: italic !important;
-  color: #059669 !important;
+  color: #05968f !important;
   font-weight: 500 !important;
   display: inline !important;
 }
@@ -764,11 +764,11 @@ button,
   .ai-response-container .ai-response h2,
   .ai-response-container .ai-response h3 {
     background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
-    color: #006C35 !important;
+    color: #006c5e !important;
     font-weight: 700 !important;
     padding: 12px 16px !important;
     border-radius: 8px !important;
-    border-right: 4px solid #006C35 !important;
+    border-right: 4px solid #006c67 !important;
     margin: 1.5rem 0 1rem 0 !important;
     display: block !important;
   }
@@ -776,14 +776,14 @@ button,
   /* Legal points - subtle styling for numbered content */
   .ai-response-container .ai-response .legal-point {
     background: rgba(0, 108, 53, 0.08) !important;
-    border-right: 3px solid #22c55e !important;
+    border-right: 3px solid #22c5ad !important;
     padding: 10px 14px !important;
     margin: 0.8rem 0 !important;
     border-radius: 6px !important;
   }
   
   .ai-response-container .ai-response .legal-point strong {
-    color: #006C35 !important;
+    color: #00636c !important;
     font-weight: 700 !important;
   }
   
@@ -806,7 +806,7 @@ button,
 .ai-response-container .ai-response strong,
 .ai-response-container .ai-response b {
   font-weight: 700 !important;
-  color: #006C35 !important;
+  color: #00486c !important;
   background: rgba(0, 108, 53, 0.1) !important;
   padding: 2px 6px !important;
   border-radius: 4px !important;
@@ -830,7 +830,7 @@ button,
     background: #f8fdf9 !important;
     padding: 1rem 1.5rem !important;
     border-radius: 8px !important;
-    border-right: 4px solid #22c55e !important;
+    border-right: 4px solid #22c59f !important;
     margin: 1rem 0 !important;
   }
 }

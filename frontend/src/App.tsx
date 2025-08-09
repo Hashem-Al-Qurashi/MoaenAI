@@ -97,13 +97,13 @@ const RenamePopup: React.FC<RenamePopupProps> = ({ isOpen, currentTitle, onSave,
             <div style={{
               width: '72px',
               height: '72px',
-              background: 'linear-gradient(135deg, #006C35 0%, #004A24 100%)',
+              background: 'linear-gradient(135deg, #00436cff 0%, #00154aff 100%)',
               borderRadius: '20px',
               margin: '0 auto 20px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 8px 32px rgba(0, 108, 53, 0.25)',
+              boxShadow: '0 8px 32px rgba(0, 85, 108, 0.25)',
               position: 'relative'
             }}>
               {/* Inner glow effect */}
@@ -568,7 +568,7 @@ const PremiumProgress: React.FC<PremiumProgressProps> = ({ current, max, label, 
             ? 'linear-gradient(90deg, #DC2626 0%, #EF4444 100%)'
             : isNearLimit
             ? 'linear-gradient(90deg, #D97706 0%, #F59E0B 100%)'
-            : 'linear-gradient(90deg, #006C35 0%, #10B981 100%)',
+            : 'linear-gradient(90deg, #00656cff 0%, #106db9ff 100%)',
           borderRadius: '2px',
           transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           boxShadow: isNearLimit ? '0 0 8px rgba(217, 119, 6, 0.4)' : 'none'
@@ -663,7 +663,7 @@ const FeatureTease: React.FC<FeatureTeaseProps> = ({ title, description, icon, d
           </p>
         </div>
         <div style={{
-          background: 'linear-gradient(135deg, #006C35 0%, #004A24 100%)',
+          background: 'linear-gradient(135deg, #006c6aff 0%, #002c4aff 100%)',
           color: 'white',
           borderRadius: '6px',
           padding: '4px 8px',
@@ -828,7 +828,7 @@ const ActionsBar: React.FC<ActionsBarProps> = ({ content, isLastMessage, message
           background: copied 
             ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)'
             : 'linear-gradient(135deg, rgba(0, 108, 53, 0.1) 0%, rgba(0, 74, 36, 0.1) 100%)',
-          color: copied ? '#10B981' : '#006C35',
+          color: copied ? '#1081b9ff' : '#00446cff',
           border: copied ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(0, 108, 53, 0.2)',
           borderRadius: '10px',
           cursor: copied ? 'default' : 'pointer',
@@ -1219,11 +1219,11 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({
       {/* Premium Legal Header Badge - GREEN THEME */}
       <div
         style={{
-          content: '⚖️ الاستشارة القانونية',
+          content: 'الاستشارة ',
           position: 'absolute',
           top: '0',
           right: '0',
-          background: 'linear-gradient(135deg, #006C35 0%, #004A24 50%, #006C35 100%)',
+          background: 'linear-gradient(135deg, #006c5aff 0%, #00364aff 50%, #002b6cff 100%)',
           color: 'white',
           padding: '12px 32px 12px 28px',
           borderRadius: '0 24px 0 20px',
@@ -1231,14 +1231,14 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({
           fontWeight: '600',
           letterSpacing: '0.02em',
           boxShadow: `
-            0 4px 16px rgba(0, 108, 53, 0.25),
+            0 4px 16px rgba(0, 108, 103, 0.25),
             inset 0 1px 0 rgba(255, 255, 255, 0.2)
           `,
           zIndex: 10,
           fontFamily: "'Noto Sans Arabic', sans-serif"
         }}
       >
-        ⚖️ الاستشارة القانونية
+         الاستشارة 
       </div>
 
       {/* Elegant Legal Accent Border - GREEN THEME */}
@@ -1249,7 +1249,7 @@ const FormattedMessage: React.FC<FormattedMessageProps> = ({
           right: '0',
           width: '5px',
           height: '100%',
-          background: 'linear-gradient(180deg, #006C35 0%, #059669 25%, #004A24 50%, #059669 75%, #006C35 100%)',
+          background: 'linear-gradient(180deg, #006c69ff 0%, #057e96ff 25%rgba(0, 32, 74, 1)24 50%, #059669 75%, #006C35 100%)',
           borderRadius: '0 24px 24px 0',
           boxShadow: 'inset 1px 0 2px rgba(255, 255, 255, 0.3)'
         }}
@@ -1846,8 +1846,8 @@ const AuthScreen: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: `
-                0 16px 32px rgba(0, 108, 53, 0.4),
-                0 8px 16px rgba(0, 108, 53, 0.3),
+                0 16px 32px rgba(0, 108, 108, 0.4),
+                0 8px 16px rgba(0, 92, 108, 0.3),
                 inset 0 2px 0 rgba(255, 255, 255, 0.2)
               `,
               position: 'relative',
@@ -1880,7 +1880,7 @@ const AuthScreen: React.FC = () => {
               letterSpacing: '-0.02em',
               textShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
             }}>
-              المساعد القانوني الذكي
+              معين المساعد الذكي
             </h1>
             
             <p style={{
@@ -1891,7 +1891,7 @@ const AuthScreen: React.FC = () => {
               fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif',
               margin: 0
             }}>
-              استشارة قانونية متقدمة مبنية على الذكاء الاصطناعي
+              استشارات متقدمة مبنية على الذكاء الاصطناعي
             </p>
 
             {/* Clean Premium Subtitle */}
@@ -2392,20 +2392,15 @@ const handleDeleteCancel = () => {
   };
 
  const suggestedQuestions = [
-  'ما هي إجراءات تأسيس شركة تجارية؟',
-  'حقوق الموظف عند إنهاء الخدمة',
+  'كيف أُوزّع أرباح شركتي الصغيرة بطريقة تقلل العبء الضريبي؟',
+  'ما الفرق العملي بين KPI وOKR في إدارة الأداء؟',
   'ما هي عقوبات التهرب الضريبي؟',
-  'ما هي حقوق المستهلك في السعودية؟',
+  'هل أبدأ مشروع تقني بـMVP ولا أستثمر من البداية في بنية تحتية قوية؟',
 ];
   const LegalLoadingIndicator: React.FC = () => {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   
   const loadingMessages = [
-    { icon: "⚖️", title: "جاري تحليل القضية القانونية", subtitle: "فهم وتحليل السؤال المطروح..." },
-    { icon: "📚", title: "البحث في الأنظمة السعودية", subtitle: "مراجعة القوانين واللوائح ذات الصلة..." },
-    { icon: "🔍", title: "تحليل السوابق القضائية", subtitle: "البحث في الأحكام والقرارات السابقة..." },
-    { icon: "📋", title: "مراجعة المواد القانونية", subtitle: "فحص النصوص النظامية المعمول بها..." },
-    { icon: "⚡", title: "تجميع الاستشارة القانونية", subtitle: "إعداد الرد المفصل والشامل..." },
     { icon: "✨", title: "التحقق من دقة المعلومات", subtitle: "مراجعة نهائية للاستشارة المقدمة..." },
     { icon: "📄", title: "تنسيق الاستجابة النهائية", subtitle: "إعداد النص بالتنسيق المناسب..." }
   ];
@@ -3120,9 +3115,9 @@ const handleDeleteCancel = () => {
           width: '100%',
           background: `
             linear-gradient(135deg, 
-              #006C35 0%, 
-              #004A24 50%,
-              #002D16 100%
+              #00656cff 0%, 
+              #003a4aff 50%,
+              #000e2dff 100%
             )
           `,
           color: 'white',
@@ -3134,8 +3129,8 @@ const handleDeleteCancel = () => {
           fontWeight: '600',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           boxShadow: `
-            0 8px 32px rgba(0, 108, 53, 0.4),
-            0 4px 16px rgba(0, 108, 53, 0.2),
+            0 8px 32px rgba(0, 81, 108, 0.4),
+            0 4px 16px rgba(0, 16, 108, 0.2),
             inset 0 1px 0 rgba(255, 255, 255, 0.1)
           `,
           display: 'flex',
@@ -3150,24 +3145,24 @@ const handleDeleteCancel = () => {
         onMouseOver={(e) => {
           e.currentTarget.style.background = `
             linear-gradient(135deg, 
-              #00A852 0%, 
-              #006C35 50%,
-              #004A24 100%
+              #0078a8ff 0%, 
+              #00316cff 50%,
+              #01004aff 100%
             )
           `;
           e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
           e.currentTarget.style.boxShadow = `
-            0 12px 48px rgba(0, 168, 82, 0.5),
-            0 8px 24px rgba(0, 108, 53, 0.3),
+            0 12px 48px rgba(0, 84, 168, 0.5),
+            0 8px 24px rgba(0, 41, 108, 0.3),
             inset 0 1px 0 rgba(255, 255, 255, 0.2)
           `;
         }}
         onMouseOut={(e) => {
           e.currentTarget.style.background = `
             linear-gradient(135deg, 
-              #006C35 0%, 
-              #004A24 50%,
-              #002D16 100%
+              #00566cff 0%, 
+              #00174aff 50%,
+              #00032dff 100%
             )
           `;
           e.currentTarget.style.transform = 'translateY(0) scale(1)';
@@ -3215,15 +3210,15 @@ const handleDeleteCancel = () => {
           borderRadius: '50%',
           background: `
             linear-gradient(135deg, 
-              #10a37f 0%, 
-              #047857 100%
+              #1074a3ff 0%, 
+              #042178ff 100%
             )
           `,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           boxShadow: `
-            0 8px 32px rgba(16, 163, 127, 0.4),
+            0 8px 32px rgba(16, 109, 163, 0.4),
             inset 0 1px 0 rgba(255, 255, 255, 0.2)
           `,
           border: '1px solid rgba(255, 255, 255, 0.1)'
@@ -3245,7 +3240,7 @@ const handleDeleteCancel = () => {
             {user?.full_name}
           </div>
           <div style={{ 
-            color: '#10a37f', 
+            color: '#106da3ff', 
             fontSize: '13px', 
             fontWeight: '600',
             fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
@@ -3282,7 +3277,7 @@ const handleDeleteCancel = () => {
           الاستخدام الشهري
         </div>
         <div style={{ 
-              color: '#10a37f', 
+              color: '#1059a3ff', 
               fontWeight: '700',
               fontSize: '20px',
               fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
@@ -3292,7 +3287,7 @@ const handleDeleteCancel = () => {
             </div>
         <div style={{
           fontSize: '12px',
-          color: 'rgba(16, 163, 127, 0.7)',
+          color: 'rgba(16, 99, 163, 0.7)',
           marginTop: '4px',
           fontWeight: '500'
         }}>
@@ -3372,8 +3367,8 @@ const handleDeleteCancel = () => {
     ? cooldownInfo.questionsUsed >= cooldownInfo.maxQuestions
  
       ? '#dc2626' 
-      : '#059669'
-    : selectedConversation ? '#2563eb' : '#059669',
+      : '#056896ff'
+    : selectedConversation ? '#2563eb' : '#054d96ff',
   padding: '8px 16px',
   borderRadius: '12px',
   fontSize: '13px',
@@ -3444,7 +3439,7 @@ const handleDeleteCancel = () => {
                   color: '#2d333a',
                   marginBottom: '16px'
                 }}>
-                  اهلا بك في حكم
+                  اهلا بك في معين
                 </h2>
                 <p style={{
                   fontSize: 'clamp(24px, 2vw, 16px)',
@@ -3453,7 +3448,7 @@ const handleDeleteCancel = () => {
                   maxWidth: '600px',
                   lineHeight: '1.6'
                 }}>
-                  احصل على استشارات قانونية دقيقة ومفصلة مبنية على القانون السعودي باستخدام تقنيات الذكاء الاصطناعي المتقدمة
+                  احصل على استشارات دقيقة ومفصلة مبنية باستخدام تقنيات الذكاء الاصطناعي المتقدمة
                 </p>
                 
                 <div style={{
@@ -3479,7 +3474,7 @@ const handleDeleteCancel = () => {
                       }}
                       onClick={() => handleSuggestedQuestion(question)}
                       onMouseOver={(e) => {
-                        (e.currentTarget as HTMLElement).style.borderColor = '#10a37f';
+                        (e.currentTarget as HTMLElement).style.borderColor = '#1086a3ff';
                         (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(16, 163, 127, 0.15)';
                       }}
                       onMouseOut={(e) => {
@@ -3557,9 +3552,9 @@ const handleDeleteCancel = () => {
       : (sidebarOpen ? '85%' : '75%'),
     background: message.role === 'user' 
       ? `linear-gradient(135deg, 
-          rgba(0, 108, 53, 0.95) 0%, 
-          rgba(0, 74, 36, 0.9) 50%,
-          rgba(0, 108, 53, 0.85) 100%
+          rgba(0, 108, 101, 0.95) 0%, 
+          rgba(0, 41, 74, 0.9) 50%,
+          rgba(0, 4, 108, 0.85) 100%
         )` 
       : 'transparent',
     color: message.role === 'user' ? 'white' : '#2d333a',
@@ -3744,7 +3739,7 @@ marginLeft: isMobile
         style={{
           background: (!inputMessage.trim() || isLoading) 
             ? 'rgba(189, 189, 189, 0.3)' 
-            : 'linear-gradient(135deg, #006C35 0%, #004A24 100%)',
+            : 'linear-gradient(135deg, #006c6cff 0%, #002e4aff 100%)',
           color: (!inputMessage.trim() || isLoading) ? '#9ca3af' : 'white',
           border: 'none',
           borderRadius: '16px',
@@ -3886,7 +3881,7 @@ const AppContent: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #006C35 0%, #004A24 100%)'
+        background: 'linear-gradient(135deg, #006a6cff 0%rgba(0, 47, 74, 1)24 100%)'
       }}>
         <div style={{
           background: 'rgba(255, 255, 255, 0.1)',

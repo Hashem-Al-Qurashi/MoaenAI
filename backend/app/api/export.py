@@ -36,11 +36,11 @@ def create_enhanced_docx_stream(question: str, answer: str, user: Optional[User]
         clean_answer = clean_answer.replace('&nbsp;', ' ')
         
         # Document title
-        title = doc.add_heading('المساعد القانوني الذكي 🇸🇦', 0)
+        title = doc.add_heading('معين المساعد الذكي ', 0)
         title.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
         # Subtitle
-        subtitle = doc.add_paragraph('استشارة قانونية ذكية مبنية على القانون السعودي')
+        subtitle = doc.add_paragraph('استشارة ذكية مبنية ')
         subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
         # Add user attribution if authenticated
@@ -89,8 +89,8 @@ def create_enhanced_docx_stream(question: str, answer: str, user: Optional[User]
         # Add disclaimer
         disclaimer = doc.add_paragraph()
         disclaimer_run = disclaimer.add_run(
-            'تنبيه: هذه الاستشارة القانونية مبنية على الذكاء الاصطناعي وتهدف للإرشاد العام. '
-            'للحصول على استشارة قانونية دقيقة، يُنصح بالتواصل مع محامٍ مختص.'
+            'تنبيه: هذه الاستشارة مبنية على الذكاء الاصطناعي وتهدف للإرشاد العام. '
+            'للحصول على استشارة دقيقة، يُنصح بالتواصل مع مختص.'
         )
         disclaimer.alignment = WD_ALIGN_PARAGRAPH.CENTER
         disclaimer_run.font.size = Pt(9)
@@ -139,14 +139,17 @@ async def export_docx(
         print(f"✅ DOCX export generated: {filename}")
         
         return StreamingResponse(
-            io.BytesIO(docx_buffer.read()),
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={
-                "Content-Disposition": f"attachment; filename={filename}",
-                "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "Cache-Control": "no-cache"
-            }
-        )
+        io.BytesIO(docx_buffer.read()),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Cache-Control": "no-cache",
+            "Access-Control-Allow-Origin": "https://d1as0pa8f4m91i.cloudfront.net",
+            "Access-Control-Allow-Methods": "GET, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        }
+    )
         
     except Exception as e:
         print(f"❌ DOCX export error: {e}")
