@@ -14,6 +14,10 @@ from app.models import User, Consultation, Conversation, Message
 from app.api.simple_auth import router as auth_router
 from app.api.chat import router as chat_router
 from app.api.export import router as export_router
+from app.api.direct_chatgpt import router as direct_chatgpt_router
+from pure_chatgpt_enterprise import router as enterprise_router
+from ultimate_chatgpt_clone import router as ultimate_router
+from true_chatgpt_mirror import router as mirror_router
 
 # Initialize database tables
 from app.database import engine, Base
@@ -69,32 +73,12 @@ async def options_handler(request: Request):
 app.include_router(auth_router, prefix="/api/auth")
 app.include_router(chat_router, prefix="/api")
 app.include_router(export_router, prefix="/export")
+app.include_router(direct_chatgpt_router, prefix="/api")  # Direct ChatGPT bypass
+app.include_router(enterprise_router, prefix="/api")  # Enterprise ChatGPT solution
+app.include_router(ultimate_router, prefix="/api")  # Ultimate ChatGPT clone with multiple strategies
+app.include_router(mirror_router, prefix="/api")  # True ChatGPT mirror
 
-# 🔥 LEGACY API REDIRECT - Graceful transition
-@app.post("/api/ask")
-async def legacy_api_redirect():
-    """
-    🚨 DEPRECATED: This endpoint has been replaced by the unified chat API
-    All users should now use /api/chat/message for the best experience
-    """
-    raise HTTPException(
-        status_code=410,  # Gone
-        detail={
-            "error": "Legacy API deprecated",
-            "message": "This endpoint has been replaced by the unified chat system",
-            "new_endpoint": "/api/chat/message",
-            "migration_guide": {
-                "old": "POST /api/ask with form data",
-                "new": "POST /api/chat/message with form data",
-                "benefits": [
-                    "Conversation memory for all users",
-                    "Better context awareness",
-                    "Session-based memory for guests",
-                    "Unified experience"
-                ]
-            }
-        }
-    )
+# LEGACY API COMPLETELY REMOVED - All requests now go through unified chat system
 
 @app.get("/")
 async def root():

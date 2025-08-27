@@ -292,107 +292,72 @@ async def _generate_streaming_response(
         print(f"  MULTI_AGENT_AVAILABLE: {MULTI_AGENT_AVAILABLE}")
         print(f"  enable_trust_trail: {enable_trust_trail}")
         print(f"  Will use multi-agent: {bool(current_user and MULTI_AGENT_AVAILABLE)}")
-        # 🚀 TRY MULTI-AGENT FOR AUTHENTICATED USERS WITH TRUST TRAIL
-        if MULTI_AGENT_AVAILABLE:
-            try:
-                user_identifier = current_user.email if current_user else f"guest_{session_id}"
-                print(f"🚀 Using SIMPLE RAG for {user_identifier}")
-                if not current_user:
-                    print(f"🔍 GUEST DEBUG:")
-                    print(f"  session_id: {session_id}")
-                    print(f"  context length: {len(context)}")
-                    print(f"  message_content: {message_content[:50]}...")
-                
-                processing_mode = "multi_agent"
-                print(f"🔄 Starting multi-agent processing...")
-                async for chunk in rag_engine.ask_question_with_context_streaming(
-                query=message_content,
-                conversation_history=context
-                     ):
-                    print(f"🔍 Received chunk: {chunk[:50]}...")  
-                    if chunk.startswith("data: "):
-                        # Parse metadata chunks
-                        try:
-                            chunk_data = json.loads(chunk[6:])
-                            if chunk_data.get("type") == "multi_agent_metadata":
-                                multi_agent_metadata.update(chunk_data)
-                                # Send multi-agent metadata to frontend
-                                yield f"data: {json.dumps({'type': 'multi_agent_metadata', **chunk_data})}\n\n"
-                            elif chunk_data.get("type") == "trust_trail":
-                                multi_agent_metadata["trust_trail"] = chunk_data
-                                # Send trust trail data to frontend
-                                yield f"data: {json.dumps({'type': 'trust_trail', **chunk_data})}\n\n"
-                        except Exception as parse_error:
-                            print(f"⚠️ Failed to parse metadata chunk: {parse_error}")
-                    else:
-                        # Regular content chunks
-                        if chunk and chunk.strip():
-                            full_response += chunk
-                            chunk_count += 1
-                            
-                            chunk_data = {
-                                'type': 'chunk',
-                                'content': chunk,
-                                'chunk_id': chunk_count,
-                                'multi_agent': True  # 🔥 Flag for frontend
-                            }
-                            yield f"data: {json.dumps(chunk_data)}\n\n"
-                
-                print(f"✅ Multi-agent streaming completed: {len(full_response)} chars")
-                
-            except Exception as simple_rag_error:
-                print(f"⚠️ Simple RAG failed, fallback to standard: {simple_rag_error}")
-                print(f"🔄 Falling back to standard streaming")
-                processing_mode = "fallback"
-                
-                # Reset response for fallback
-                full_response = ""
-                chunk_count = 0
-                
-                # Fallback to your existing streaming logic
-                from rag_engine import rag_engine
-                
-                if context and len(context) > 0:
-                    stream_iterator = rag_engine.ask_question_with_context_streaming(message_content, context)
-                else:
-                    stream_iterator = rag_engine.ask_question_streaming(message_content)
-                
-                async for chunk in stream_iterator:
-                    if chunk and chunk.strip():
-                        full_response += chunk
+        # 🚀 ABSOLUTELY PURE CHATGPT - Zero modifications
+        try:
+            user_identifier = current_user.email if current_user else f"guest_{session_id}"
+            print(f"🤖 Using ABSOLUTELY PURE ChatGPT for {user_identifier}")
+            
+            processing_mode = "absolutely_pure_chatgpt"
+            
+            from openai import AsyncOpenAI
+            import os
+            # Use DeepSeek API (compatible with OpenAI SDK)
+            deepseek_client = AsyncOpenAI(
+                api_key=os.getenv("DEEPSEEK_API_KEY"),
+                base_url="https://api.deepseek.com"
+            )
+            
+            # Build messages - NO SYSTEM PROMPT AT ALL
+            messages = []
+            
+            # Add conversation history only
+            for msg in context[-10:]:
+                if msg.get("role") and msg.get("content"):
+                    messages.append({
+                        "role": msg["role"],
+                        "content": msg["content"]
+                    })
+            
+            # Add current user message
+            messages.append({
+                "role": "user",
+                "content": message_content
+            })
+            
+            # PURE DeepSeek API call - no modifications
+            stream = await deepseek_client.chat.completions.create(
+                model="deepseek-chat",   # DeepSeek's main model
+                messages=messages,
+                temperature=1.0,         
+                max_tokens=4096,         
+                top_p=1.0,              
+                frequency_penalty=0,     
+                presence_penalty=0,      
+                stream=True
+            )
+            
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        full_response += content
                         chunk_count += 1
                         
                         chunk_data = {
                             'type': 'chunk',
-                            'content': chunk,
+                            'content': content,
                             'chunk_id': chunk_count,
-                            'multi_agent': False  # 🔥 Fallback mode
+                            'pure_chatgpt': True
                         }
                         yield f"data: {json.dumps(chunk_data)}\n\n"
+            
+            print(f"✅ Pure ChatGPT completed: {len(full_response)} chars")
+            
+        except Exception as chatgpt_error:
+            print(f"❌ Pure ChatGPT error: {chatgpt_error}")
+            error_response = f"I apologize, but I encountered an error: {str(chatgpt_error)}"
+            yield f"data: {json.dumps({'type': 'chunk', 'content': error_response, 'chunk_id': 1})}\n\n"
         
-        else:
-            # 🌐 STANDARD STREAMING (Guests + Users without trust trail)
-            from rag_engine import rag_engine
-            
-            if context and len(context) > 0:
-                print(f"🔄 Standard streaming with context: {len(context)} messages")
-                stream_iterator = rag_engine.ask_question_with_context_streaming(message_content, context)
-            else:
-                print("🔄 Standard streaming without context")
-                stream_iterator = rag_engine.ask_question_streaming(message_content)
-            
-            async for chunk in stream_iterator:
-                if chunk and chunk.strip():
-                    full_response += chunk
-                    chunk_count += 1
-                    
-                    chunk_data = {
-                        'type': 'chunk',
-                        'content': chunk,
-                        'chunk_id': chunk_count,
-                        'multi_agent': False
-                    }
-                    yield f"data: {json.dumps(chunk_data)}\n\n"
         
         # ===== SAVE AI RESPONSE =====
         processing_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
@@ -513,9 +478,6 @@ async def _generate_json_response(
                     # Fallback if the method doesn't exist yet
                     print(f"⚠️ Multi-agent ChatService method not available, using direct approach")
                     
-                    # Direct multi-agent processing
-                    
-                    
                     # Get conversation context
                     if conversation_id:
                         conversation = db.query(Conversation).filter(
@@ -536,36 +498,51 @@ async def _generate_json_response(
                     # Add user message
                     user_message = ChatService.add_message(db, conversation_id, "user", message_content)
                     
-                    # Process with multi-agent
-                    chunks = []
-                    metadata = {}
-                    print(f"🚀 Using SIMPLE RAG for {user_identifier}")
-                from rag_engine import rag_engine  # ADD THIS LINE
-                async for chunk in rag_engine.ask_question_with_context_streaming(
-                    query=message_content,
-                    conversation_history=context
-                ):
-                    async for chunk in rag_engine.ask_question_with_context_streaming(
-                    query=message_content,
-                    conversation_history=context
-                ):
-                        if chunk.startswith("data: "):
-                            try:
-                                chunk_data = json.loads(chunk[6:])
-                                metadata.update(chunk_data)
-                            except:
-                                pass
-                        else:
-                            chunks.append(chunk)
+                    # PURE ChatGPT call - NO SYSTEM PROMPT
+                    print(f"🤖 Using PURE ChatGPT for authenticated user (JSON mode)")
                     
-                    ai_response = ''.join(chunks)
+                    from openai import AsyncOpenAI
+                    import os
+                    # Use DeepSeek API
+                    deepseek_client = AsyncOpenAI(
+                        api_key=os.getenv("DEEPSEEK_API_KEY"),
+                        base_url="https://api.deepseek.com"
+                    )
+                    
+                    # Build messages - ABSOLUTELY NO SYSTEM PROMPT
+                    messages = []
+                    
+                    # Add conversation history
+                    for msg in context[-10:]:
+                        if msg.get("role") and msg.get("content"):
+                            messages.append({
+                                "role": msg["role"],
+                                "content": msg["content"]
+                            })
+                    
+                    # Add current message
+                    messages.append({
+                        "role": "user",
+                        "content": message_content
+                    })
+                    
+                    # ABSOLUTELY PURE DeepSeek API call
+                    response = await deepseek_client.chat.completions.create(
+                        model="deepseek-chat",   # DeepSeek's main model
+                        messages=messages,
+                        temperature=1.0,         
+                        max_tokens=4096,         
+                        top_p=1.0,              
+                        frequency_penalty=0,     
+                        presence_penalty=0,      
+                        stream=False
+                    )
+                    
+                    ai_response = response.choices[0].message.content
                     
                     # Save AI response
                     ai_message = ChatService.add_message(
-                        db, conversation_id, "assistant", ai_response,
-                        confidence_score=str(metadata.get("overall_confidence", 0.8)),
-                        processing_time_ms=str(metadata.get("processing_time_ms", 0)),
-                        sources=json.dumps(metadata.get("citations_summary", []))
+                        db, conversation_id, "assistant", ai_response
                     )
                     
                     # Update user
@@ -595,14 +572,8 @@ async def _generate_json_response(
                             'is_verified': current_user.is_verified,
                             'questions_remaining': _calculate_questions_remaining(current_user)
                         },
-                        # Multi-agent metadata
-                        "multi_agent_enabled": True,
-                        "processing_mode": "multi_agent",
-                        "overall_confidence": metadata.get("overall_confidence", 0.8),
-                        "citations_count": len(metadata.get("citations_summary", [])),
-                        "citations_summary": metadata.get("citations_summary", []),
-                        "trust_trail_data": metadata.get("trust_trail", {}),
-                        "trust_trail_enabled": enable_trust_trail
+                        "pure_chatgpt": True,
+                        "processing_mode": "pure_chatgpt"
                     }
                     
                     return JSONResponse(content=result)
@@ -612,11 +583,11 @@ async def _generate_json_response(
                 print(f"🔄 Falling back to standard processing")
         
         # Use existing ChatService for authenticated users (fallback)
-        result = await ChatService.process_chat_message(
+        result = await ChatService.process_unified_message(
             db=db,
             user=current_user,
-            conversation_id=conversation_id,
-            message_content=message_content
+            message_content=message_content,
+            conversation_id=conversation_id
         )
         
         # Add user data
@@ -633,21 +604,17 @@ async def _generate_json_response(
             'questions_remaining': _calculate_questions_remaining(current_user)
         }
         
-        # Add fallback metadata
+        # Add pure ChatGPT metadata
         result.update({
-            "multi_agent_enabled": False,
-            "processing_mode": "standard",
-            "overall_confidence": 0.8,
-            "citations_count": 0,
-            "citations_summary": [],
-            "trust_trail_enabled": False
+            "pure_chatgpt": True,
+            "processing_mode": "pure_chatgpt"
         })
         
         return JSONResponse(content=result)
         
     else:
-        # Handle guest users with session-based memory (unchanged)
-        from rag_engine import ask_question, ask_question_with_context
+        # Handle guest users with PURE ChatGPT
+        print(f"🤖 Using PURE ChatGPT for guest {session_id} (JSON mode)")
         
         # Get session and setup conversation history
         session = GuestService.get_guest_session(session_id)
@@ -665,11 +632,44 @@ async def _generate_json_response(
         history = session["conversation_history"]
         context = [{"role": msg["role"], "content": msg["content"]} for msg in history[:-1]]
         
-        # Process with AI
-        if context:
-            ai_response = await ask_question_with_context(message_content, context)
-        else:
-            ai_response = await ask_question(message_content)
+        # Pure DeepSeek processing
+        from openai import AsyncOpenAI
+        import os
+        deepseek_client = AsyncOpenAI(
+            api_key=os.getenv("DEEPSEEK_API_KEY"),
+            base_url="https://api.deepseek.com"
+        )
+        
+        # Build messages - ABSOLUTELY NO SYSTEM PROMPT
+        messages = []
+        
+        # Add conversation history
+        for msg in context[-10:]:
+            if msg.get("role") and msg.get("content"):
+                messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+        
+        # Add current message
+        messages.append({
+            "role": "user",
+            "content": message_content
+        })
+        
+        # ABSOLUTELY PURE DeepSeek API call
+        response = await deepseek_client.chat.completions.create(
+            model="deepseek-chat",   # DeepSeek's main model
+            messages=messages,
+            temperature=1.0,         
+            max_tokens=4096,         
+            top_p=1.0,              
+            frequency_penalty=0,     
+            presence_penalty=0,      
+            stream=False
+        )
+        
+        ai_response = response.choices[0].message.content
         
         # Save AI response to session
         session["conversation_history"].append({
@@ -689,10 +689,8 @@ async def _generate_json_response(
                 "timestamp": datetime.utcnow().isoformat()
             },
             "user_type": user_type,
-            # Guest users don't get multi-agent
-            "multi_agent_enabled": False,
-            "processing_mode": "guest",
-            "trust_trail_enabled": False
+            "pure_chatgpt": True,
+            "processing_mode": "pure_chatgpt"
         }
         
         return JSONResponse(content=result)

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import { legalAPI, chatAPI } from './services/api';
+import { DirectChatGPT } from './components/DirectChatGPT';
 
 
 
@@ -3903,6 +3904,11 @@ const AppContent: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // Route to direct ChatGPT page
+  if (currentRoute === '/direct-chatgpt') {
+    return <DirectChatGPT />;
   }
 
   // Route to auth page

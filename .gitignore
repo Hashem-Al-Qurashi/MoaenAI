@@ -49,3 +49,8 @@ backend/.env
 *.sqlite3
 backend/.env
 .env
+
+
+*.tfvars
+backend/infrastructure/variables.tf
+infrastructure/terraform.tfvars

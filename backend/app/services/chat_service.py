@@ -310,74 +310,46 @@ async def process_unified_message(
             'created_at': datetime.utcnow()
         })()
     
-    # 🚀 NUCLEAR AI PROCESSING - GUARANTEED ANTI-BLOAT
+    # 🚀 DIRECT CHATGPT API CALL - COMPLETE REPLACEMENT
     try:
-        if user:
-            # 🚀 AUTHENTICATED USERS: Use NUCLEAR system (guaranteed no bloat)
-            try:
-                if NUCLEAR_SYSTEM_AVAILABLE:
-                    print(f"🚀 Using NUCLEAR system for authenticated user - guaranteed compliant")
-                    nuclear_orchestrator = NuclearLegalOrchestrator(nuclear_openai_client)
-                    
-                    chunks = []
-                    
-                    async def collect_nuclear_response():
-                        async for chunk in nuclear_orchestrator.nuclear_process_query(
-                            query=message_content,
-                            conversation_context=context_messages
-                        ):
-                            chunks.append(chunk)
-                        return ''.join(chunks)
-                    
-                    ai_response = await collect_nuclear_response()
-                    
-                    # Get nuclear metrics for quality assurance
-                    metrics = nuclear_orchestrator.get_nuclear_metrics()
-                    print(f"✅ NUCLEAR processing successful!")
-                    print(f"📊 Word compliance: {metrics['word_limit_compliance']:.1%}")
-                    print(f"⚡ CTA compliance: {metrics['cta_compliance']:.1%}")
-                    print(f"🚀 Processing time: {metrics['average_processing_time_ms']}ms")
-                    
-                else:
-                    raise Exception("Nuclear system not available")
-                    
-            except Exception as nuclear_error:
-                print(f"⚠️ Nuclear system failed, fallback to standard: {nuclear_error}")
-                # Fallback to existing method
-                from rag_engine import ask_question_with_context
-                ai_response = await ask_question_with_context(
-                    message_content,
-                    context_messages
-                )
-                print(f"✅ Fallback processing successful")
-        else:
-            # 🌐 GUESTS: Use NUCLEAR system too (for consistency)
-            try:
-                if NUCLEAR_SYSTEM_AVAILABLE:
-                    print(f"🚀 Using NUCLEAR system for guest - guaranteed compliant")
-                    nuclear_orchestrator = NuclearLegalOrchestrator(nuclear_openai_client)
-                    
-                    chunks = []
-                    
-                    async for chunk in nuclear_orchestrator.nuclear_process_query(
-                        query=message_content,
-                        conversation_context=context_messages
-                    ):
-                        chunks.append(chunk)
-                    
-                    ai_response = ''.join(chunks)
-                    print(f"✅ NUCLEAR guest processing successful")
-                    
-                else:
-                    raise Exception("Nuclear system not available")
-                    
-            except Exception as nuclear_error:
-                print(f"⚠️ Nuclear system failed for guest, fallback to standard: {nuclear_error}")
-                from rag_engine import ask_question_with_context
-                ai_response = await ask_question_with_context(
-                    message_content,
-                    context_messages
-                )
+        print(f"🤖 Using DIRECT ChatGPT API (complete replacement)")
+        
+        # Import OpenAI directly - bypass everything
+        from openai import AsyncOpenAI
+        import os
+        openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        # Build messages for pure ChatGPT - ABSOLUTELY NO SYSTEM PROMPT
+        messages = []
+        
+        # Add conversation history
+        for msg in context_messages[-10:]:
+            if msg.get("role") and msg.get("content"):
+                messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+        
+        # Add current message
+        messages.append({
+            "role": "user",
+            "content": message_content
+        })
+        
+        # Pure ChatGPT API call - same parameters as chatgpt.com
+        response = await openai_client.chat.completions.create(
+            model="gpt-3.5-turbo-16k",
+            messages=messages,
+            temperature=1.0,         # ChatGPT default
+            max_tokens=4096,         # ChatGPT default
+            top_p=1.0,              # ChatGPT default
+            frequency_penalty=0,     # ChatGPT default
+            presence_penalty=0,      # ChatGPT default
+            stream=False
+        )
+        
+        ai_response = response.choices[0].message.content
+        print(f"✅ Direct ChatGPT API successful - response length: {len(ai_response.split())} words")
         
         processing_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
         
@@ -434,10 +406,10 @@ async def process_unified_message(
             "user_questions_remaining": 999999 if user else 999,
             "context_used": len(context_messages),
             "processing_time_ms": processing_time,
-            # 🚀 NUCLEAR SYSTEM INDICATORS
-            "nuclear_system_used": NUCLEAR_SYSTEM_AVAILABLE,
-            "response_guaranteed_compliant": True,
-            "anti_bloat_active": True
+            # 🚀 COMPREHENSIVE SYSTEM INDICATORS
+            "comprehensive_mode": True,
+            "response_style": "chatgpt-like",
+            "word_count": len(ai_response.split())
         }
         
     except Exception as e:

@@ -94,16 +94,16 @@ class Settings(BaseSettings):
         description="DeepSeek API key"
     )
     
-    # AI Configuration
+    # AI Configuration - Updated for comprehensive responses
     ai_max_tokens: int = Field(
-        default=6000,
-        ge=100,
+        default=4000,  # Increased for ChatGPT-style responses
+        ge=1000,
         le=8000,
         description="Maximum tokens for AI responses"
     )
     
     ai_temperature: float = Field(
-        default=0.15,
+        default=0.7,  # Increased for more natural, varied responses
         ge=0.0,
         le=2.0,
         description="AI response temperature"

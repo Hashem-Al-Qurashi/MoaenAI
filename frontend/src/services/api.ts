@@ -7,7 +7,7 @@ import type {
   Consultation 
 } from '../types/auth';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://d2jqrzdx9yrob3.cloudfront.net';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -134,8 +134,12 @@ export const legalAPI = {
     formData.append('context', JSON.stringify(conversationHistory));
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/ask`, {
+  const response = await fetch(`${API_BASE_URL}/api/chat/message`, {
     method: 'POST',
+    headers: {
+      'Accept': 'text/event-stream',
+      ...(getToken() && { 'Authorization': `Bearer ${getToken()}` }),
+    },
     body: formData
   });
 
@@ -229,6 +233,15 @@ export const legalAPI = {
   }
 };
 export const chatAPI = {
+async sendDirectChatGPT(message: string, history: any[] = []): Promise<any> {
+  const response = await api.post('/api/direct-chatgpt', {
+    message,
+    history
+  });
+  
+  return response.data;
+},
+
 async sendMessage(message: string, conversationId?: string, sessionId?: string): Promise<any> {
   const formData = new FormData();
   formData.append('message', message);
@@ -291,7 +304,7 @@ async sendMessageStreaming(
 
   try {
     // ✅ FIXED: Removed conflicting headers, let browser set Content-Type for FormData
-    const response = await fetch(`${API_BASE_URL}api/chat/message`, {  // ← Removed double slash
+    const response = await fetch(`${API_BASE_URL}/api/chat/message`, {
       method: 'POST',
       headers: {
         'Accept': 'text/event-stream',

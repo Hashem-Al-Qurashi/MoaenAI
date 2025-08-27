@@ -617,13 +617,13 @@ class MultiDomainIntelligentRAG:
             yield f"عذراً، حدث خطأ في معالجة سؤالك: {str(e)}"
     
     async def _stream_ai_response(self, messages: List[Dict[str, str]]) -> AsyncIterator[str]:
-        """Stream AI response with error handling"""
+        """Stream AI response with error handling - ChatGPT style"""
         try:
             stream = await self.ai_client.chat.completions.create(
                 model=self.ai_model,
                 messages=messages,
-                temperature=0.3,  # Balanced creativity and consistency
-                max_tokens=1500,  # Reasonable length
+                temperature=0.7,  # More natural like ChatGPT
+                max_tokens=4000,  # Much longer responses
                 stream=True
             )
             
@@ -641,6 +641,54 @@ class MultiDomainIntelligentRAG:
                 yield "\n\n🔑 خطأ في مفتاح API. يرجى التواصل مع الدعم الفني."
             else:
                 yield f"\n\n❌ خطأ تقني: {str(e)}"
+    
+    async def generate_chatgpt_style_response(self, query: str, conversation_history: List[Dict[str, str]] = None) -> str:
+        """Generate ChatGPT-style comprehensive response without templates or restrictions"""
+        try:
+            # Build conversation context
+            messages = []
+            
+            # Simple system prompt - just like ChatGPT
+            messages.append({
+                "role": "system",
+                "content": """أنت مساعد ذكي متخصص في القانون السعودي والإجراءات الإدارية والتقنية.
+قدم إجابات شاملة ومفصلة ومفيدة باللغة العربية.
+كن طبيعياً في المحادثة واشرح بالتفصيل مع أمثلة عملية."""
+            })
+            
+            # Add conversation history if provided
+            if conversation_history:
+                for msg in conversation_history[-10:]:  # Last 10 messages for context
+                    if msg.get("role") and msg.get("content"):
+                        messages.append({
+                            "role": msg["role"],
+                            "content": msg["content"]
+                        })
+            
+            # Add current query
+            messages.append({
+                "role": "user",
+                "content": query
+            })
+            
+            # Generate response with high token limit and natural temperature
+            response = await self.ai_client.chat.completions.create(
+                model=self.ai_model,
+                messages=messages,
+                temperature=0.7,  # Natural variation like ChatGPT
+                max_tokens=4000,  # Long comprehensive responses
+                stream=False  # Get complete response at once
+            )
+            
+            return response.choices[0].message.content
+            
+        except Exception as e:
+            logger.error(f"ChatGPT-style generation error: {e}")
+            # Fallback to streaming if needed
+            chunks = []
+            async for chunk in self.ask_question_streaming(query):
+                chunks.append(chunk)
+            return ''.join(chunks)
     
     async def generate_conversation_title(self, first_message: str) -> str:
         """Intelligent conversation title generation with domain awareness"""
@@ -698,12 +746,17 @@ async def ask_question(query: str) -> str:
         chunks.append(chunk)
     return ''.join(chunks)
 
-async def ask_question_with_context(query: str, conversation_history: List[Dict[str, str]]) -> str:
+async def ask_question_with_context(query: str, conversation_history: List[Dict[str, str]], comprehensive_mode: bool = True) -> str:
     """Legacy sync function with context - converts streaming to complete response"""
-    chunks = []
-    async for chunk in rag_engine.ask_question_with_context_streaming(query, conversation_history):
-        chunks.append(chunk)
-    return ''.join(chunks)
+    if comprehensive_mode:
+        # ChatGPT-style comprehensive response without templates
+        return await rag_engine.generate_chatgpt_style_response(query, conversation_history)
+    else:
+        # Original template-based approach
+        chunks = []
+        async for chunk in rag_engine.ask_question_with_context_streaming(query, conversation_history):
+            chunks.append(chunk)
+        return ''.join(chunks)
 
 async def generate_conversation_title(first_message: str) -> str:
     """Legacy function for title generation"""
